@@ -860,7 +860,7 @@ export default function App() {
       <div className="login-box">
         <div className="login-logo">
           <div className="login-logo-icon">SV</div>
-          <div><div className="login-logo-text">ServiceVault</div><div className="login-logo-sub">FIELD SERVICE TRACKER</div></div>
+          <div><div className="login-logo-text">Yell - LIDL</div><div className="login-logo-sub">Servisné záznamy</div></div>
         </div>
         <div className="login-title">Sign in</div>
         <div className="login-sub">Enter your credentials to continue</div>
