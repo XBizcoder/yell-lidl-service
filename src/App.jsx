@@ -931,7 +931,7 @@ export default function App() {
       <div className="login-box">
         <div className="login-logo">
           <div className="login-logo-icon">SV</div>
-          <div><div className="login-logo-text">ServiceVault</div><div className="login-logo-sub">FIELD SERVICE TRACKER</div></div>
+          <div><div className="login-logo-text">Yell-LIDL</div><div className="login-logo-sub">ZÁZNAMY VÝJAZDOV</div></div>
         </div>
         <div className="login-title">Sign in</div>
         <div className="login-sub">Enter your credentials to continue</div>
@@ -959,7 +959,7 @@ export default function App() {
       {!isMobile && <div className="sidebar">
         <div className="sidebar-logo">
           <div className="sidebar-logo-icon">SV</div>
-          <div><div className="sidebar-logo-name">ServiceVault</div><div className="sidebar-logo-sub">FIELD TRACKER</div></div>
+          <div><div className="sidebar-logo-name">Yell-LIDL</div><div className="sidebar-logo-sub">ZÁZNAMY VÝJAZDOV</div></div>
         </div>
         <nav className="sidebar-nav">
           {nav.map(n=>(
