@@ -239,7 +239,7 @@ const CSS = `
   @media(max-width:640px){
     .sidebar{display:none !important;}
     .main{margin-left:0;padding-bottom:calc(72px + env(safe-area-inset-bottom));}
-    .bottom-nav{opacity:1;pointer-events:auto;transform:translateY(0);}
+    /* bottom nav shown via JS isMobile */
     .page-header{padding:16px 16px 0;margin-bottom:16px;flex-wrap:wrap;gap:10px;}
     .page-body{padding:0 16px 16px;}
     .page-title{font-size:17px;}
@@ -268,21 +268,21 @@ const CSS = `
   .bottom-nav{
     position:fixed;bottom:0;left:0;right:0;
     background:var(--bg2);border-top:1px solid var(--border);
-    z-index:50;justify-content:space-around;align-items:stretch;
+    z-index:9999;justify-content:space-around;align-items:stretch;
     height:calc(62px + env(safe-area-inset-bottom));
     padding-bottom:env(safe-area-inset-bottom);
     display:flex;
-    opacity:0;pointer-events:none;transform:translateY(100%);transition:none;
   }
+  .bottom-nav-hidden{display:none !important;}
   .bottom-nav-item{
     display:flex;flex-direction:column;align-items:center;justify-content:center;
-    gap:3px;flex:1;cursor:pointer;color:var(--text3);
+    gap:4px;flex:1;cursor:pointer;color:var(--text3);
     font-size:10px;font-family:'IBM Plex Mono',monospace;letter-spacing:0.3px;
     border:none;background:transparent;padding:8px 2px;transition:color 0.15s;
-    -webkit-tap-highlight-color:transparent;
+    -webkit-tap-highlight-color:transparent;min-width:0;
   }
   .bottom-nav-item.active{color:var(--accent);}
-  .bottom-nav-item svg{flex-shrink:0;}
+  .bottom-nav-item span{white-space:nowrap;font-size:9px;}
 `;
 
 // ── TOAST ─────────────────────────────────────────────────────────────────────
@@ -860,6 +860,13 @@ function SettingsPage({ rates, setRates, toast }) {
 
 // ── APP ───────────────────────────────────────────────────────────────────────
 export default function App() {
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 640);
+  useEffect(() => {
+    const fn = () => setIsMobile(window.innerWidth <= 640);
+    window.addEventListener('resize', fn);
+    return () => window.removeEventListener('resize', fn);
+  }, []);
+
   const [users,    setUsers]    = useState([]);
   const [branches, setBranches] = useState([]);
   const [jobs,     setJobs]     = useState([]);
@@ -939,7 +946,7 @@ export default function App() {
   return (
     <><style>{CSS}</style>
     <div className="app">
-      <div className="sidebar">
+      {!isMobile && <div className="sidebar">
         <div className="sidebar-logo">
           <div className="sidebar-logo-icon">SV</div>
           <div><div className="sidebar-logo-name">ServiceVault</div><div className="sidebar-logo-sub">FIELD TRACKER</div></div>
@@ -963,8 +970,8 @@ export default function App() {
             <Icon name="logout" size={15}/><span>Sign out</span>
           </div>
         </div>
-      </div>
-      <div className="main">
+      </div>}
+      <div className="main" style={isMobile ? {marginLeft:0, paddingBottom:'calc(72px + env(safe-area-inset-bottom))'} : {}}>
         {page==="dashboard" && <Dashboard jobs={jobs} branches={branches} users={users} currentUser={currentUser}/>}
         {page==="jobs"      && <JobsPage jobs={jobs} reload={loadAll} branches={branches} users={users} currentUser={currentUser} toast={toast}/>}
         {page==="branches"  && <BranchesPage branches={branches} reload={loadAll} isAdmin={isAdmin} toast={toast}/>}
@@ -975,7 +982,7 @@ export default function App() {
     </div>
 
     {/* ── BOTTOM NAV (mobile only) ── */}
-    <nav className="bottom-nav">
+    <nav className={`bottom-nav${!isMobile ? " bottom-nav-hidden" : ""}`}>
       {nav.map(n=>(
         <button key={n.id} className={`bottom-nav-item ${page===n.id?"active":""}`} onClick={()=>setPage(n.id)}>
           <Icon name={n.icon} size={22}/>
