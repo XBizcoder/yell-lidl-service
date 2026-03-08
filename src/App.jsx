@@ -96,8 +96,8 @@ const CSS = `
   .login-box{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:40px 40px;width:360px;box-shadow:0 8px 40px rgba(0,0,0,0.25);border-top:5px solid #f6c01a;}
   .login-logo{display:flex;align-items:center;gap:14px;margin-bottom:28px;}
   .login-logo-icon{width:52px;height:52px;background:#f6c01a;border-radius:50%;border:3px solid #e60a14;display:flex;align-items:center;justify-content:center;color:#0050AA;font-weight:700;font-size:16px;font-family:'IBM Plex Mono',monospace;box-shadow:0 2px 8px rgba(0,0,0,0.2);}
-  .login-logo-text{font-size:20px;font-weight:700;color:#ffffff;letter-spacing:-0.5px;}
-  .login-logo-sub{font-size:11px;color:rgba(255,255,255,0.7);font-family:'IBM Plex Mono',monospace;margin-top:1px;}
+  .login-logo-text{font-size:20px;font-weight:700;color:#000000;letter-spacing:-0.5px;}
+  .login-logo-sub{font-size:11px;color:rgba(0,0,0,0.7);font-family:'IBM Plex Mono',monospace;margin-top:1px;}
   .login-title{font-size:22px;font-weight:700;margin-bottom:6px;color:#0a1628;}
   .login-sub{font-size:13px;color:#3d5278;margin-bottom:28px;}
   .login-err{background:#fff0f0;border:1px solid var(--red);color:var(--red);border-radius:var(--radius);padding:10px 14px;font-size:13px;margin-bottom:16px;}
