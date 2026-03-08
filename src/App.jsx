@@ -222,15 +222,62 @@ const CSS = `
   .toast.ok{border-color:var(--green);}
   @keyframes fadeup{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
 
-  @media(max-width:900px){
+  /* ── TABLET ── */
+  @media(max-width:1024px){
     .stats-grid{grid-template-columns:1fr 1fr;}
-    .sidebar{width:60px;}
+    .earnings-breakdown{grid-template-columns:1fr 1fr;}
+    .field-row3{grid-template-columns:1fr 1fr;}
+    .sidebar{width:64px;}
     .sidebar-logo-name,.sidebar-logo-sub,.nav-item span,.user-name,.user-role{display:none;}
-    .main{margin-left:60px;}
-    .sidebar-logo{justify-content:center;}
+    .main{margin-left:64px;}
+    .sidebar-logo{justify-content:center;padding:16px 8px;}
     .nav-item{justify-content:center;padding:10px;}
     .user-badge{justify-content:center;}
   }
+
+  /* ── MOBILE ── */
+  @media(max-width:640px){
+    .sidebar{display:none;}
+    .main{margin-left:0;padding-bottom:72px;}
+    .bottom-nav{display:flex;}
+    .page-header{padding:16px 16px 0;margin-bottom:16px;flex-wrap:wrap;gap:10px;}
+    .page-body{padding:0 16px 16px;}
+    .page-title{font-size:17px;}
+    .stats-grid{grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;}
+    .stat-card{padding:14px;}
+    .stat-value{font-size:20px;}
+    .stat-sub{font-size:11px;}
+    .earnings-breakdown{grid-template-columns:1fr 1fr;}
+    .field-row{grid-template-columns:1fr;}
+    .field-row3{grid-template-columns:1fr;}
+    .modal-bg{align-items:flex-end;}
+    .modal,.modal-lg{width:100%;max-width:100%;border-radius:16px 16px 0 0;max-height:92vh;}
+    table{font-size:12px;}
+    td,th{padding:8px 10px;}
+    .filters{gap:7px;}
+    .filter-input{width:160px;}
+    .filter-select{font-size:12px;padding:6px 8px;}
+    .login-wrap{align-items:flex-start;padding-top:40px;}
+    .login-box{width:calc(100% - 32px);margin:0 16px;padding:32px 24px;}
+    .toast{left:16px;right:16px;bottom:80px;}
+    .hide-mobile{display:none;}
+    .page-header .btn span{display:none;}
+  }
+
+  /* bottom nav */
+  .bottom-nav{
+    display:none;position:fixed;bottom:0;left:0;right:0;
+    background:var(--bg2);border-top:1px solid var(--border);
+    z-index:50;justify-content:space-around;align-items:stretch;height:62px;
+  }
+  .bottom-nav-item{
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:3px;flex:1;cursor:pointer;color:var(--text3);
+    font-size:10px;font-family:'IBM Plex Mono',monospace;letter-spacing:0.3px;
+    border:none;background:transparent;padding:8px 2px;transition:color 0.15s;
+  }
+  .bottom-nav-item.active{color:var(--accent);}
+  .bottom-nav-item svg{flex-shrink:0;}
 `;
 
 // ── TOAST ─────────────────────────────────────────────────────────────────────
@@ -515,13 +562,13 @@ function BranchesPage({ branches, reload, isAdmin, toast }) {
           {filtered.length===0
             ? <div className="empty-state"><div className="empty-icon"><Icon name="branch" size={32}/></div>No branches</div>
             : <table>
-                <thead><tr><th>ID</th><th>City</th><th>Address</th><th>Distance</th><th>Servers</th><th>Switches</th><th>MikroTik</th><th>Description</th>{isAdmin&&<th></th>}</tr></thead>
+                <thead><tr><th>ID</th><th>City</th><th>Address</th><th>Distance</th><th className="hide-mobile">Servers</th><th className="hide-mobile">Switches</th><th>MikroTik</th><th className="hide-mobile">Description</th>{isAdmin&&<th></th>}</tr></thead>
                 <tbody>{filtered.map(b=>(
                   <tr key={b.id}>
                     <td className="td-mono">{b.id}</td><td>{b.city}</td><td>{b.address}</td>
-                    <td className="td-mono">{b.distanceKm} km</td><td className="td-mono">{b.servers}</td><td className="td-mono">{b.switches}</td>
+                    <td className="td-mono hide-mobile">{b.distanceKm} km</td><td className="td-mono hide-mobile">{b.servers}</td><td className="td-mono hide-mobile">{b.switches}</td>
                     <td>{b.hasMikrotik?<span className="badge badge-green">Yes</span>:<span className="badge badge-red">No</span>}</td>
-                    <td style={{maxWidth:180,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{b.description}</td>
+                    <td className="hide-mobile" style={{maxWidth:180,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{b.description}</td>
                     {isAdmin&&<td><div className="flex gap-4">
                       <button className="btn btn-ghost btn-sm" onClick={()=>setModal({mode:"edit",branch:b})}><Icon name="edit" size={13}/></button>
                       <button className="btn btn-danger btn-sm" onClick={()=>del(b.id)}><Icon name="trash" size={13}/></button>
@@ -620,7 +667,7 @@ function JobsPage({ jobs, reload, branches, users, currentUser, toast }) {
                   {currentUser.role==="admin"&&<th>Technician</th>}
                   <SH col="hoursWorked" label="Hours"/>
                   <SH col="kmTravelled" label="Km"/>
-                  <th>Net</th><th>MikroTik</th><th></th>
+                  <th>Net</th><th className="hide-mobile">MikroTik</th><th></th>
                 </tr></thead>
                 <tbody>{filtered.map(j=>{
                   const b=branches.find(x=>x.id===j.branchId);
@@ -634,7 +681,7 @@ function JobsPage({ jobs, reload, branches, users, currentUser, toast }) {
                     <td className="td-mono">{j.hoursWorked} h</td>
                     <td className="td-mono">{j.kmTravelled?.toFixed(1)}</td>
                     <td className="td-mono text-amber">{fmtCur(e.net)}</td>
-                    <td>{b?.hasMikrotik?<span className="badge badge-green">Yes</span>:<span className="badge badge-red">No</span>}</td>
+                    <td className="hide-mobile">{b?.hasMikrotik?<span className="badge badge-green">Yes</span>:<span className="badge badge-red">No</span>}</td>
                     <td><div className="flex gap-4">
                       <button className="btn btn-ghost btn-sm" onClick={()=>setDetail(j)}><Icon name="eye" size={13}/></button>
                       <button className="btn btn-ghost btn-sm" onClick={()=>{setEditingJob(j);setModal("edit");}}><Icon name="edit" size={13}/></button>
@@ -860,7 +907,7 @@ export default function App() {
       <div className="login-box">
         <div className="login-logo">
           <div className="login-logo-icon">SV</div>
-          <div><div className="login-logo-text">Yell - LIDL</div><div className="login-logo-sub">Servisné záznamy</div></div>
+          <div><div className="login-logo-text">ServiceVault</div><div className="login-logo-sub">FIELD SERVICE TRACKER</div></div>
         </div>
         <div className="login-title">Sign in</div>
         <div className="login-sub">Enter your credentials to continue</div>
@@ -888,7 +935,7 @@ export default function App() {
       <div className="sidebar">
         <div className="sidebar-logo">
           <div className="sidebar-logo-icon">SV</div>
-          <div><div className="sidebar-logo-name">Yell - LIDL</div><div className="sidebar-logo-sub">Servisné záznamy</div></div>
+          <div><div className="sidebar-logo-name">ServiceVault</div><div className="sidebar-logo-sub">FIELD TRACKER</div></div>
         </div>
         <nav className="sidebar-nav">
           {nav.map(n=>(
@@ -919,6 +966,19 @@ export default function App() {
         {page==="settings" && isAdmin && <SettingsPage rates={rates} setRates={setRates} toast={toast}/>}
       </div>
     </div>
+
+    {/* ── BOTTOM NAV (mobile only) ── */}
+    <nav className="bottom-nav">
+      {nav.map(n=>(
+        <button key={n.id} className={`bottom-nav-item ${page===n.id?"active":""}`} onClick={()=>setPage(n.id)}>
+          <Icon name={n.icon} size={20}/>
+          {n.label==="Dashboard"?"Home":n.label==="Service Jobs"?"Jobs":n.label}
+        </button>
+      ))}
+      <button className="bottom-nav-item" onClick={loadAll}><Icon name="refresh" size={20}/>Refresh</button>
+      <button className="bottom-nav-item" style={{color:"var(--red)"}} onClick={()=>setCurrentUser(null)}><Icon name="logout" size={20}/>Out</button>
+    </nav>
+
     {toastMsg && <Toast msg={toastMsg.msg} type={toastMsg.type} onDone={()=>setToastMsg(null)}/>}
     </>
   );
