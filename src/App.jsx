@@ -253,9 +253,9 @@ const CSS = `
     .field-row{grid-template-columns:1fr;}
     .detail-grid{grid-template-columns:1fr;}
     .field-row3{grid-template-columns:1fr;}
-    .modal-bg{align-items:flex-end;padding-bottom:calc(62px + env(safe-area-inset-bottom));}
-    .modal,.modal-lg{width:100%;max-width:100%;border-radius:16px 16px 0 0;max-height:92vh;overflow-x:hidden;}
-    .modal-footer{padding-bottom:calc(14px + env(safe-area-inset-bottom));}
+    .modal-bg{align-items:flex-start;z-index:99999;}
+    .modal,.modal-lg{width:100%;max-width:100%;border-radius:0;height:100vh;max-height:100vh;overflow-x:hidden;overflow-y:auto;}
+    .modal-footer{position:sticky;bottom:0;background:var(--bg2);z-index:2;padding:14px 20px;}
     table{font-size:12px;}
     td,th{padding:8px 10px;}
     .filters{gap:7px;}
