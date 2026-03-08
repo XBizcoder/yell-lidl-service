@@ -237,9 +237,9 @@ const CSS = `
 
   /* ── MOBILE ── */
   @media(max-width:640px){
-    .sidebar{display:none;}
-    .main{margin-left:0;padding-bottom:72px;}
-    .bottom-nav{display:flex;}
+    .sidebar{display:none !important;}
+    .main{margin-left:0;padding-bottom:calc(72px + env(safe-area-inset-bottom));}
+    .bottom-nav{opacity:1;pointer-events:auto;transform:translateY(0);}
     .page-header{padding:16px 16px 0;margin-bottom:16px;flex-wrap:wrap;gap:10px;}
     .page-body{padding:0 16px 16px;}
     .page-title{font-size:17px;}
@@ -264,17 +264,22 @@ const CSS = `
     .page-header .btn span{display:none;}
   }
 
-  /* bottom nav */
+  /* bottom nav — always in DOM, hidden on desktop via pointer-events+opacity */
   .bottom-nav{
-    display:none;position:fixed;bottom:0;left:0;right:0;
+    position:fixed;bottom:0;left:0;right:0;
     background:var(--bg2);border-top:1px solid var(--border);
-    z-index:50;justify-content:space-around;align-items:stretch;height:62px;
+    z-index:50;justify-content:space-around;align-items:stretch;
+    height:calc(62px + env(safe-area-inset-bottom));
+    padding-bottom:env(safe-area-inset-bottom);
+    display:flex;
+    opacity:0;pointer-events:none;transform:translateY(100%);transition:none;
   }
   .bottom-nav-item{
     display:flex;flex-direction:column;align-items:center;justify-content:center;
     gap:3px;flex:1;cursor:pointer;color:var(--text3);
     font-size:10px;font-family:'IBM Plex Mono',monospace;letter-spacing:0.3px;
     border:none;background:transparent;padding:8px 2px;transition:color 0.15s;
+    -webkit-tap-highlight-color:transparent;
   }
   .bottom-nav-item.active{color:var(--accent);}
   .bottom-nav-item svg{flex-shrink:0;}
@@ -973,8 +978,8 @@ export default function App() {
     <nav className="bottom-nav">
       {nav.map(n=>(
         <button key={n.id} className={`bottom-nav-item ${page===n.id?"active":""}`} onClick={()=>setPage(n.id)}>
-          <Icon name={n.icon} size={20}/>
-          {n.label==="Dashboard"?"Home":n.label==="Service Jobs"?"Jobs":n.label}
+          <Icon name={n.icon} size={22}/>
+          <span>{n.label==="Dashboard"?"Home":n.label==="Service Jobs"?"Jobs":n.label==="Branches"?"Stores":n.label==="Earnings"?"Money":n.label}</span>
         </button>
       ))}
       <button className="bottom-nav-item" onClick={loadAll}><Icon name="refresh" size={20}/>Refresh</button>
