@@ -888,7 +888,7 @@ export default function App() {
       <div className="sidebar">
         <div className="sidebar-logo">
           <div className="sidebar-logo-icon">SV</div>
-          <div><div className="sidebar-logo-name">ServiceVault</div><div className="sidebar-logo-sub">FIELD TRACKER</div></div>
+          <div><div className="sidebar-logo-name">Yell - LIDL</div><div className="sidebar-logo-sub">Servisné záznamy</div></div>
         </div>
         <nav className="sidebar-nav">
           {nav.map(n=>(
