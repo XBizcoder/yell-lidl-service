@@ -41,7 +41,9 @@ const fmtCur  = n => `€ ${Number(n).toFixed(2)}`;
 const uid     = () => Math.random().toString(36).slice(2, 10);
 
 function toLocalDT(date) {
+  if (!date) return "";
   const d = new Date(date);
+  if (isNaN(d)) return "";
   d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
   return d.toISOString().slice(0, 16);
 }
@@ -280,7 +282,12 @@ function BranchForm({ branch, onSave, onClose }) {
 // ── JOB FORM ──────────────────────────────────────────────────────────────────
 function JobForm({ job, branches, users, currentUser, onSave, onClose }) {
   const now = new Date();
-  const [form, setForm] = useState(job || {
+  const [form, setForm] = useState(job ? {
+    ...job,
+    departureTime: toLocalDT(job.departureTime),
+    arrivalTime:   toLocalDT(job.arrivalTime),
+    returnTime:    toLocalDT(job.returnTime),
+  } : {
     branchId:"", userId: currentUser.id,
     departureTime: toLocalDT(now),
     arrivalTime:   toLocalDT(new Date(now.getTime() + 2*3600000)),
