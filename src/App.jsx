@@ -253,8 +253,9 @@ const CSS = `
     .field-row{grid-template-columns:1fr;}
     .detail-grid{grid-template-columns:1fr;}
     .field-row3{grid-template-columns:1fr;}
-    .modal-bg{align-items:flex-end;}
+    .modal-bg{align-items:flex-end;padding-bottom:calc(62px + env(safe-area-inset-bottom));}
     .modal,.modal-lg{width:100%;max-width:100%;border-radius:16px 16px 0 0;max-height:92vh;overflow-x:hidden;}
+    .modal-footer{padding-bottom:calc(14px + env(safe-area-inset-bottom));}
     table{font-size:12px;}
     td,th{padding:8px 10px;}
     .filters{gap:7px;}
