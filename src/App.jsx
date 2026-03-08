@@ -859,7 +859,9 @@ export default function App() {
   const [branches, setBranches] = useState([]);
   const [jobs,     setJobs]     = useState([]);
   const [rates,    setRates]    = useState({...RATES});
-  const [currentUser, setCurrentUser] = useState(null);
+  const [currentUser, setCurrentUser] = useState(() => {
+    try { const u = localStorage.getItem("sv_user"); return u ? JSON.parse(u) : null; } catch { return null; }
+  });
   const [page,     setPage]     = useState("dashboard");
   const [loading,  setLoading]  = useState(true);
   const [toastMsg, setToastMsg] = useState(null);
@@ -889,7 +891,7 @@ export default function App() {
     setLoggingIn(true); setLoginErr("");
     try {
       const res = await db.get("users",`?username=eq.${encodeURIComponent(loginForm.username)}&password=eq.${encodeURIComponent(loginForm.password)}`);
-      if(res.length>0){ setCurrentUser(mapUser(res[0])); }
+      if(res.length>0){ const u = mapUser(res[0]); localStorage.setItem("sv_user", JSON.stringify(u)); setCurrentUser(u); }
       else setLoginErr("Invalid username or password.");
     } catch(e){ setLoginErr("Connection error: "+e.message); }
     setLoggingIn(false);
@@ -952,7 +954,7 @@ export default function App() {
           <div className="nav-item" style={{color:"var(--text3)",fontSize:12}} onClick={loadAll}>
             <Icon name="refresh" size={14}/><span>Refresh</span>
           </div>
-          <div className="nav-item" onClick={()=>setCurrentUser(null)} style={{color:"var(--red)",marginTop:2}}>
+          <div className="nav-item" onClick={()=>{ localStorage.removeItem("sv_user"); setCurrentUser(null); }} style={{color:"var(--red)",marginTop:2}}>
             <Icon name="logout" size={15}/><span>Sign out</span>
           </div>
         </div>
@@ -976,7 +978,7 @@ export default function App() {
         </button>
       ))}
       <button className="bottom-nav-item" onClick={loadAll}><Icon name="refresh" size={20}/>Refresh</button>
-      <button className="bottom-nav-item" style={{color:"var(--red)"}} onClick={()=>setCurrentUser(null)}><Icon name="logout" size={20}/>Out</button>
+      <button className="bottom-nav-item" style={{color:"var(--red)"}} onClick={()=>{ localStorage.removeItem("sv_user"); setCurrentUser(null); }}><Icon name="logout" size={20}/>Out</button>
     </nav>
 
     {toastMsg && <Toast msg={toastMsg.msg} type={toastMsg.type} onDone={()=>setToastMsg(null)}/>}
