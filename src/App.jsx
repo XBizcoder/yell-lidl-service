@@ -32,7 +32,7 @@ const mapJob    = j => ({ id: j.id, branchId: j.branch_id, userId: j.user_id, de
 const mapUser   = u => ({ id: u.id, username: u.username, password: u.password, name: u.name, role: u.role });
 
 // ── RATES ─────────────────────────────────────────────────────────────────────
-const RATES = { kmExpenseRate: 0.08, hourlyRate: 20.00, travelFlat: 40.00 };
+const RATES = { kmExpenseRate: 0.09, hourlyRate: 20.00, travelFlat: 40.00 };
 
 // ── HELPERS ───────────────────────────────────────────────────────────────────
 const fmt     = d => d ? new Date(d).toLocaleString("hr-HR", { day:"2-digit", month:"2-digit", year:"numeric", hour:"2-digit", minute:"2-digit" }) : "—";
@@ -44,8 +44,8 @@ function toLocalDT(date) {
   if (!date) return "";
   const d = new Date(date);
   if (isNaN(d)) return "";
-  d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
-  return d.toISOString().slice(0, 16);
+  const pad = n => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 function calcEarnings(job, rates) {
@@ -188,6 +188,8 @@ const CSS = `
   .modal{background:var(--bg2);border:1px solid var(--border);border-radius:10px;width:560px;max-width:95vw;max-height:90vh;display:flex;flex-direction:column;}
   .modal-lg{width:720px;}
   .modal-header{padding:18px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:#0050AA;border-radius:10px 10px 0 0;}
+  .modal-header .btn-ghost{background:rgba(255,255,255,0.15);color:#ffffff;border-color:rgba(255,255,255,0.3);}
+  .modal-header .btn-ghost:hover{background:rgba(255,255,255,0.25);color:#ffffff;}
   .modal-title{font-size:15px;font-weight:700;color:#ffffff;}
   .modal-body{padding:20px;overflow-y:auto;flex:1;}
   .modal-footer{padding:14px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px;}
