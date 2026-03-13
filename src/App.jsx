@@ -32,7 +32,7 @@ const mapJob    = j => ({ id: j.id, branchId: j.branch_id, userId: j.user_id, de
 const mapUser   = u => ({ id: u.id, username: u.username, password: u.password, name: u.name, role: u.role });
 
 // ── RATES ─────────────────────────────────────────────────────────────────────
-const RATES = { kmExpenseRate: 0.08, hourlyRate: 20.00, travelFlat: 30.00 };
+const RATES = { kmExpenseRate: 0.08, hourlyRate: 20.00, travelFlat: 40.00 };
 
 // ── HELPERS ───────────────────────────────────────────────────────────────────
 const fmt     = d => d ? new Date(d).toLocaleString("hr-HR", { day:"2-digit", month:"2-digit", year:"numeric", hour:"2-digit", minute:"2-digit" }) : "—";
