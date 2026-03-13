@@ -30,6 +30,25 @@ const db = {
 const mapBranch = b => ({ id: b.id, city: b.city, address: b.address, description: b.description || "", distanceKm: parseFloat(b.distance_km) || 0, servers: b.servers || 0, switches: b.switches || 0, hasMikrotik: b.has_mikrotik || false });
 const mapJob    = j => ({ id: j.id, branchId: j.branch_id, userId: j.user_id, departureTime: j.departure_time, arrivalTime: j.arrival_time, hoursWorked: parseFloat(j.hours_worked) || 0, returnTime: j.return_time, kmTravelled: parseFloat(j.km_travelled) || 0, description: j.description || "" });
 const mapUser   = u => ({ id: u.id, username: u.username, password: u.password, name: u.name, role: u.role });
+const mapPhoto  = p => ({ id: p.id, refType: p.ref_type, refId: p.ref_id, path: p.path, takenAt: p.taken_at, url: `${SUPA_URL}/storage/v1/object/public/photos/${p.path}` });
+
+const storage = {
+  async upload(file, path) {
+    const r = await fetch(`${SUPA_URL}/storage/v1/object/photos/${path}`, {
+      method: "POST",
+      headers: { "apikey": SUPA_KEY, "Authorization": `Bearer ${SUPA_KEY}`, "Content-Type": file.type, "x-upsert": "true" },
+      body: file,
+    });
+    if (!r.ok) throw new Error(await r.text());
+    return path;
+  },
+  async remove(path) {
+    await fetch(`${SUPA_URL}/storage/v1/object/photos/${path}`, {
+      method: "DELETE",
+      headers: { "apikey": SUPA_KEY, "Authorization": `Bearer ${SUPA_KEY}` },
+    });
+  },
+};
 
 // ── RATES ─────────────────────────────────────────────────────────────────────
 const RATES = { kmExpenseRate: 0.09, hourlyRate: 20.00, travelFlat: 40.00 };
@@ -205,6 +224,19 @@ const CSS = `
   .earn-item{background:var(--bg3);border-radius:var(--radius);padding:14px;text-align:center;}
   .earn-label{font-size:11px;color:var(--text3);font-family:'IBM Plex Mono',monospace;margin-bottom:6px;}
   .earn-val{font-size:18px;font-weight:600;font-family:'IBM Plex Mono',monospace;color:#0050AA;word-break:break-all;}
+
+  /* ── PHOTOS ── */
+  .photo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-top:12px;}
+  .photo-card{position:relative;border-radius:8px;overflow:hidden;border:1px solid var(--border);background:var(--bg3);aspect-ratio:4/3;}
+  .photo-card img{width:100%;height:100%;object-fit:cover;display:block;cursor:pointer;}
+  .photo-card-info{position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,0.55);padding:4px 7px;font-size:10px;color:#fff;font-family:'IBM Plex Mono',monospace;}
+  .photo-card-del{position:absolute;top:5px;right:5px;background:rgba(230,10,20,0.85);border:none;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#fff;}
+  .photo-add-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;border:2px dashed var(--border2);border-radius:8px;aspect-ratio:4/3;cursor:pointer;color:var(--text3);font-size:12px;background:transparent;transition:all 0.15s;width:100%;}
+  .photo-add-btn:hover{border-color:#0050AA;color:#0050AA;background:rgba(0,80,170,0.05);}
+  .photo-lightbox{position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:99999;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;}
+  .photo-lightbox img{max-width:95vw;max-height:80vh;border-radius:8px;object-fit:contain;}
+  .photo-lightbox-info{color:rgba(255,255,255,0.7);font-size:12px;font-family:'IBM Plex Mono',monospace;}
+  .photo-uploading{opacity:0.5;pointer-events:none;}
 
   .flex{display:flex;align-items:center;gap:8px;}
   .gap-4{gap:4px;}
@@ -452,8 +484,92 @@ function UserForm({ user, onSave, onClose }) {
   );
 }
 
+// ── PHOTO GALLERY ─────────────────────────────────────────────────────────────
+function PhotoGallery({ refType, refId, toast }) {
+  const [photos, setPhotos] = useState([]);
+  const [uploading, setUploading] = useState(false);
+  const [lightbox, setLightbox] = useState(null);
+  const inputRef = useState(null);
+
+  const load = useCallback(async () => {
+    try {
+      const res = await db.get("photos", `?ref_type=eq.${refType}&ref_id=eq.${refId}&order=taken_at.asc`);
+      setPhotos(res.map(mapPhoto));
+    } catch(e) { toast("Photo load error: "+e.message, "err"); }
+  }, [refType, refId]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const upload = async (files) => {
+    if (!files.length) return;
+    setUploading(true);
+    try {
+      for (const file of Array.from(files)) {
+        const ext = file.name.split(".").pop();
+        const path = `${refType}/${refId}/${uid()}.${ext}`;
+        await storage.upload(file, path);
+        const takenAt = new Date().toISOString();
+        await db.post("photos", { id: uid(), ref_type: refType, ref_id: refId, path, taken_at: takenAt });
+      }
+      await load();
+      toast("Photo(s) uploaded", "ok");
+    } catch(e) { toast("Upload error: "+e.message, "err"); }
+    setUploading(false);
+  };
+
+  const del = async (photo) => {
+    if (!confirm("Delete this photo?")) return;
+    try {
+      await db.delete("photos", `id=eq.${photo.id}`);
+      await storage.remove(photo.path);
+      await load();
+      toast("Photo deleted", "ok");
+    } catch(e) { toast("Delete error: "+e.message, "err"); }
+  };
+
+  const updateDate = async (photo, newVal) => {
+    try {
+      await db.patch("photos", `id=eq.${photo.id}`, { taken_at: localDTtoISO(newVal) });
+      await load();
+    } catch(e) { toast("Update error: "+e.message, "err"); }
+  };
+
+  return (
+    <div>
+      <div className="photo-grid">
+        {photos.map(p => (
+          <div key={p.id} className="photo-card">
+            <img src={p.url} alt="" onClick={() => setLightbox(p)} loading="lazy" />
+            <div className="photo-card-info">
+              <input
+                type="datetime-local"
+                value={toLocalDT(p.takenAt)}
+                onChange={e => updateDate(p, e.target.value)}
+                style={{background:"transparent",border:"none",color:"#fff",fontFamily:"IBM Plex Mono,monospace",fontSize:10,width:"100%",padding:0,outline:"none",cursor:"pointer"}}
+              />
+            </div>
+            <button className="photo-card-del" onClick={() => del(p)}><Icon name="x" size={11}/></button>
+          </div>
+        ))}
+        <label className={`photo-add-btn${uploading?" photo-uploading":""}`}>
+          <Icon name="plus" size={22}/>
+          <span>{uploading ? "Uploading…" : "Add Photo"}</span>
+          <input type="file" accept="image/*" multiple style={{display:"none"}} onChange={e => upload(e.target.files)}/>
+        </label>
+      </div>
+      {lightbox && (
+        <div className="photo-lightbox" onClick={() => setLightbox(null)}>
+          <img src={lightbox.url} alt="" onClick={e => e.stopPropagation()}/>
+          <div className="photo-lightbox-info">{fmt(lightbox.takenAt)}</div>
+          <button className="btn btn-ghost" style={{color:"#fff",borderColor:"rgba(255,255,255,0.3)"}} onClick={() => setLightbox(null)}>Close</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── JOB DETAIL ────────────────────────────────────────────────────────────────
-function JobDetail({ job, branch, user, onClose, onEdit }) {
+function JobDetail({ job, branch, user, onClose, onEdit, toast }) {
   const earn = calcEarnings(job, RATES);
   return (
     <div className="modal-bg"><div className="modal modal-lg">
@@ -493,6 +609,8 @@ function JobDetail({ job, branch, user, onClose, onEdit }) {
           <div className="earn-item"><div className="earn-label">Expenses ({job.kmTravelled?.toFixed(1)} km)</div><div className="earn-val" style={{color:"var(--red)"}}>{fmtCur(earn.expenses)}</div></div>
           <div className="earn-item" style={{border:"1px solid rgba(240,165,0,0.3)"}}><div className="earn-label">Net</div><div className="earn-val">{fmtCur(earn.net)}</div></div>
         </div>
+        <p className="section-title">Photos</p>
+        <PhotoGallery refType="job" refId={job.id} toast={toast}/>
       </div>
       <div className="modal-footer"><button className="btn btn-ghost" onClick={onClose}>Close</button></div>
     </div></div>
@@ -543,9 +661,43 @@ function Dashboard({ jobs, branches, users, currentUser }) {
   );
 }
 
+// ── BRANCH DETAIL ─────────────────────────────────────────────────────────────
+function BranchDetail({ branch, onClose, onEdit, toast }) {
+  return (
+    <div className="modal-bg"><div className="modal modal-lg">
+      <div className="modal-header">
+        <div>
+          <div className="modal-title">[{branch.id}] {branch.city}</div>
+          <div style={{fontSize:12,color:"rgba(255,255,255,0.7)",fontFamily:"IBM Plex Mono,monospace",marginTop:2}}>{branch.address}</div>
+        </div>
+        <div className="flex">
+          <button className="btn btn-ghost btn-sm" onClick={onEdit}><Icon name="edit" size={14}/> Edit</button>
+          <button className="btn btn-ghost btn-sm" onClick={onClose}><Icon name="x"/></button>
+        </div>
+      </div>
+      <div className="modal-body">
+        <p className="section-title">Branch Info</p>
+        <div className="detail-grid">
+          <div className="detail-item"><div className="detail-label">Branch ID</div><div className="detail-value mono">{branch.id}</div></div>
+          <div className="detail-item"><div className="detail-label">City</div><div className="detail-value">{branch.city}</div></div>
+          <div className="detail-item"><div className="detail-label">Address</div><div className="detail-value">{branch.address}</div></div>
+          <div className="detail-item"><div className="detail-label">Distance</div><div className="detail-value mono">{branch.distanceKm} km</div></div>
+          <div className="detail-item"><div className="detail-label">Servers / Switches</div><div className="detail-value">{branch.servers} / {branch.switches}</div></div>
+          <div className="detail-item"><div className="detail-label">MikroTik</div><div className="detail-value">{branch.hasMikrotik?<span className="badge badge-green">Yes</span>:<span className="badge badge-red">No</span>}</div></div>
+          {branch.description && <div className="detail-item detail-full"><div className="detail-label">Description</div><div className="detail-value">{branch.description}</div></div>}
+        </div>
+        <p className="section-title">Photos</p>
+        <PhotoGallery refType="branch" refId={branch.id} toast={toast}/>
+      </div>
+      <div className="modal-footer"><button className="btn btn-ghost" onClick={onClose}>Close</button></div>
+    </div></div>
+  );
+}
+
 // ── BRANCHES PAGE ─────────────────────────────────────────────────────────────
 function BranchesPage({ branches, reload, isAdmin, toast }) {
   const [modal, setModal] = useState(null);
+  const [detail, setDetail] = useState(null);
   const [search, setSearch] = useState("");
   const filtered = branches.filter(b=>b.id.includes(search)||b.city.toLowerCase().includes(search.toLowerCase())||b.address.toLowerCase().includes(search.toLowerCase()));
 
@@ -580,23 +732,25 @@ function BranchesPage({ branches, reload, isAdmin, toast }) {
           {filtered.length===0
             ? <div className="empty-state"><div className="empty-icon"><Icon name="branch" size={32}/></div>No branches</div>
             : <table>
-                <thead><tr><th>ID</th><th>City</th><th>Address</th><th>Distance</th><th className="hide-mobile">Servers</th><th className="hide-mobile">Switches</th><th>MikroTik</th><th className="hide-mobile">Description</th>{isAdmin&&<th></th>}</tr></thead>
+                <thead><tr><th>ID</th><th>City</th><th>Address</th><th>Distance</th><th className="hide-mobile">Servers</th><th className="hide-mobile">Switches</th><th>MikroTik</th><th className="hide-mobile">Description</th><th></th></tr></thead>
                 <tbody>{filtered.map(b=>(
                   <tr key={b.id}>
                     <td className="td-mono">{b.id}</td><td>{b.city}</td><td>{b.address}</td>
                     <td className="td-mono hide-mobile">{b.distanceKm} km</td><td className="td-mono hide-mobile">{b.servers}</td><td className="td-mono hide-mobile">{b.switches}</td>
                     <td>{b.hasMikrotik?<span className="badge badge-green">Yes</span>:<span className="badge badge-red">No</span>}</td>
                     <td className="hide-mobile" style={{maxWidth:180,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{b.description}</td>
-                    {isAdmin&&<td><div className="flex gap-4">
-                      <button className="btn btn-ghost btn-sm" onClick={()=>setModal({mode:"edit",branch:b})}><Icon name="edit" size={13}/></button>
-                      <button className="btn btn-danger btn-sm" onClick={()=>del(b.id)}><Icon name="trash" size={13}/></button>
-                    </div></td>}
+                    <td><div className="flex gap-4">
+                      <button className="btn btn-ghost btn-sm" onClick={()=>setDetail(b)}><Icon name="eye" size={13}/></button>
+                      {isAdmin&&<><button className="btn btn-ghost btn-sm" onClick={()=>setModal({mode:"edit",branch:b})}><Icon name="edit" size={13}/></button>
+                      <button className="btn btn-danger btn-sm" onClick={()=>del(b.id)}><Icon name="trash" size={13}/></button></>}
+                    </div></td>
                   </tr>
                 ))}</tbody>
               </table>}
         </div></div>
       </div>
       {modal && <BranchForm branch={modal.branch} onSave={save} onClose={()=>setModal(null)}/>}
+      {detail && <BranchDetail branch={detail} onClose={()=>setDetail(null)} onEdit={()=>{setModal({mode:"edit",branch:detail});setDetail(null);}} toast={toast}/>}
     </div>
   );
 }
@@ -711,7 +865,7 @@ function JobsPage({ jobs, reload, branches, users, currentUser, toast }) {
         </div></div>
       </div>
       {(modal==="add"||modal==="edit") && <JobForm job={modal==="edit"?editingJob:null} branches={branches} users={users} currentUser={currentUser} onSave={saveJob} onClose={()=>{setModal(null);setEditingJob(null);}}/>}
-      {detail && <JobDetail job={detail} branch={branches.find(b=>b.id===detail.branchId)} user={users.find(u=>u.id===detail.userId)} onClose={()=>setDetail(null)} onEdit={()=>{setEditingJob(detail);setModal("edit");setDetail(null);}}/>}
+      {detail && <JobDetail job={detail} branch={branches.find(b=>b.id===detail.branchId)} user={users.find(u=>u.id===detail.userId)} onClose={()=>setDetail(null)} onEdit={()=>{setEditingJob(detail);setModal("edit");setDetail(null);}} toast={toast}/>}
     </div>
   );
 }
