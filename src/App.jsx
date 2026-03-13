@@ -48,6 +48,13 @@ function toLocalDT(date) {
   return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
+// Convert datetime-local string (no tz) to ISO with local timezone offset for saving
+function localDTtoISO(str) {
+  if (!str) return null;
+  const d = new Date(str); // interprets as local time
+  return d.toISOString();  // converts to UTC ISO string for Supabase
+}
+
 function calcEarnings(job, rates) {
   const km  = job.kmTravelled || 0;
   const hrs = job.hoursWorked || 0;
@@ -627,7 +634,7 @@ function JobsPage({ jobs, reload, branches, users, currentUser, toast }) {
 
   const saveJob = async (data) => {
     try {
-      const row={branch_id:data.branchId,user_id:data.userId,departure_time:data.departureTime,arrival_time:data.arrivalTime,hours_worked:data.hoursWorked,return_time:data.returnTime,km_travelled:data.kmTravelled,description:data.description};
+      const row={branch_id:data.branchId,user_id:data.userId,departure_time:localDTtoISO(data.departureTime),arrival_time:localDTtoISO(data.arrivalTime),hours_worked:data.hoursWorked,return_time:localDTtoISO(data.returnTime),km_travelled:data.kmTravelled,description:data.description};
       if(modal==="add"){ await db.post("jobs",{...row,id:uid()}); }
       else { await db.patch("jobs",`id=eq.${editingJob.id}`,row); }
       await reload(); setModal(null); setEditingJob(null); toast("Job saved","ok");
