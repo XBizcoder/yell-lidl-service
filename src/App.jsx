@@ -1075,6 +1075,16 @@ export default function App() {
 
   useEffect(()=>{ loadAll(); }, [loadAll]);
 
+  // Disable browser back button - push a state so back just returns to same state
+  useEffect(() => {
+    const onPop = (e) => {
+      window.history.pushState(null, "", window.location.href);
+    };
+    window.history.pushState(null, "", window.location.href);
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
+
   const login = async () => {
     setLoggingIn(true); setLoginErr("");
     try {
