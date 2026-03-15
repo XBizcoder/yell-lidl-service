@@ -218,7 +218,7 @@ const CSS = `
   .modal-header .btn-ghost:hover{background:rgba(255,255,255,0.25);color:#ffffff;}
   .modal-title{font-size:15px;font-weight:700;color:#ffffff;}
   .modal-body{padding:20px;overflow-y:auto;flex:1;min-height:0;}
-  .modal-footer{padding:14px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px;position:sticky;bottom:0;background:var(--bg2);z-index:10;flex-shrink:0;}
+  .modal-footer{padding:14px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px;background:var(--bg2);z-index:10;flex-shrink:0;}
 
   .earnings-breakdown{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-top:16px;min-width:0;}
   .earn-item{background:var(--bg3);border-radius:var(--radius);padding:14px;text-align:center;}
@@ -294,9 +294,15 @@ const CSS = `
     .field-row{grid-template-columns:1fr;}
     .detail-grid{grid-template-columns:1fr;}
     .field-row3{grid-template-columns:1fr;}
-    .modal-bg{align-items:flex-start;z-index:99999;}
-    .modal,.modal-lg{width:100%;max-width:100%;border-radius:0;height:100vh;max-height:100vh;overflow-x:hidden;overflow-y:auto;}
-    .modal-footer{position:sticky;bottom:0;background:var(--bg2);z-index:2;padding:14px 20px;}
+    .modal-bg{align-items:flex-start;z-index:99999;padding:0;}
+    .modal,.modal-lg{
+      width:100%;max-width:100%;border-radius:0;
+      height:100dvh;max-height:100dvh;
+      overflow-x:hidden;overflow-y:hidden;
+      display:flex;flex-direction:column;
+    }
+    .modal-body{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;min-height:0;padding-bottom:8px;}
+    .modal-footer{flex-shrink:0;position:relative;bottom:auto;background:var(--bg2);z-index:2;padding:12px 16px;border-top:1px solid var(--border);}
     table{font-size:12px;}
     td,th{padding:8px 10px;}
     .filters{gap:7px;}
@@ -1075,14 +1081,27 @@ export default function App() {
 
   useEffect(()=>{ loadAll(); }, [loadAll]);
 
-  // Disable browser back button - push a state so back just returns to same state
+  // Disable browser back button
   useEffect(() => {
-    const onPop = (e) => {
-      window.history.pushState(null, "", window.location.href);
-    };
+    const onPop = () => window.history.pushState(null, "", window.location.href);
     window.history.pushState(null, "", window.location.href);
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
+  }, []);
+
+  // When keyboard opens on mobile, scroll active modal-body so footer stays visible
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const onResize = () => {
+      // Force any focused input to scroll into view inside modal-body
+      const active = document.activeElement;
+      if (active && active.tagName !== "BODY") {
+        setTimeout(() => active.scrollIntoView({ block: "center", behavior: "smooth" }), 100);
+      }
+    };
+    vv.addEventListener("resize", onResize);
+    return () => vv.removeEventListener("resize", onResize);
   }, []);
 
   const login = async () => {
