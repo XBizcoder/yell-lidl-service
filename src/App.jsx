@@ -211,14 +211,14 @@ const CSS = `
   .detail-full{grid-column:1/-1;}
 
   .modal-bg{position:fixed;inset:0;background:rgba(0,40,100,0.55);z-index:100;display:flex;align-items:center;justify-content:center;}
-  .modal{background:var(--bg2);border:1px solid var(--border);border-radius:10px;width:560px;max-width:95vw;max-height:90vh;display:flex;flex-direction:column;}
+  .modal{background:var(--bg2);border:1px solid var(--border);border-radius:10px;width:560px;max-width:95vw;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;}
   .modal-lg{width:720px;}
   .modal-header{padding:18px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:#0050AA;border-radius:10px 10px 0 0;}
   .modal-header .btn-ghost{background:rgba(255,255,255,0.15);color:#ffffff;border-color:rgba(255,255,255,0.3);}
   .modal-header .btn-ghost:hover{background:rgba(255,255,255,0.25);color:#ffffff;}
   .modal-title{font-size:15px;font-weight:700;color:#ffffff;}
-  .modal-body{padding:20px;overflow-y:auto;flex:1;}
-  .modal-footer{padding:14px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px;}
+  .modal-body{padding:20px;overflow-y:auto;flex:1;min-height:0;}
+  .modal-footer{padding:14px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px;position:sticky;bottom:0;background:var(--bg2);z-index:10;flex-shrink:0;}
 
   .earnings-breakdown{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-top:16px;min-width:0;}
   .earn-item{background:var(--bg3);border-radius:var(--radius);padding:14px;text-align:center;}
@@ -434,7 +434,7 @@ function JobForm({ job, branches, users, currentUser, onSave, onClose }) {
         </div>
         <div className="field" style={{maxWidth:180}}><label>Hours of work on-site</label><input type="number" step="0.5" min="0" value={form.hoursWorked} onChange={e=>set("hoursWorked",e.target.value)} placeholder="0.0"/></div>
         <p className="section-title">Service Description</p>
-        <div className="field"><label>Actions performed</label><textarea value={form.description} onChange={e=>set("description",e.target.value)} rows={4}/></div>
+        <div className="field"><label>Actions performed</label><textarea value={form.description} onChange={e=>set("description",e.target.value)} rows={3} style={{maxHeight:120}}/></div>
         {earnings && <>
           <p className="section-title">Estimated Earnings</p>
           <div className="earnings-breakdown">
@@ -551,11 +551,20 @@ function PhotoGallery({ refType, refId, toast }) {
             <button className="photo-card-del" onClick={() => del(p)}><Icon name="x" size={11}/></button>
           </div>
         ))}
-        <label className={`photo-add-btn${uploading?" photo-uploading":""}`}>
+        <button
+          className={`photo-add-btn${uploading?" photo-uploading":""}`}
+          onClick={() => document.getElementById(`photo-input-${refType}-${refId}`).click()}
+          type="button"
+        >
           <Icon name="plus" size={22}/>
           <span>{uploading ? "Uploading…" : "Add Photo"}</span>
-          <input type="file" accept="image/*" multiple style={{display:"none"}} onChange={e => upload(e.target.files)}/>
-        </label>
+        </button>
+        <input
+          id={`photo-input-${refType}-${refId}`}
+          type="file" accept="image/*" multiple
+          style={{display:"none"}}
+          onChange={e => { upload(e.target.files); e.target.value=""; }}
+        />
       </div>
       {lightbox && (
         <div className="photo-lightbox" onClick={() => setLightbox(null)}>
