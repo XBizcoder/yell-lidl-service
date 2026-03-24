@@ -284,6 +284,8 @@ const CSS = `
     .main{margin-left:0;padding-bottom:calc(72px + env(safe-area-inset-bottom));}
     /* bottom nav shown via JS isMobile */
     .page-header{padding:16px 12px 0;margin-bottom:16px;flex-wrap:wrap;gap:10px;width:100%;}
+    .field select{font-size:11px;}
+    select option{font-size:11px;}
     .page-body{padding:0 12px 12px;}
     .page-title{font-size:17px;}
     .stats-grid{grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;}
