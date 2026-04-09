@@ -100,6 +100,7 @@ const Icon = ({ name, size = 16 }) => {
     x:        "M6 18L18 6M6 6l12 12",
     settings: "M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z",
     refresh:  "M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15",
+    download: "M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4",
   };
   return (
     <svg width={size} height={size} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
@@ -887,12 +888,78 @@ function JobsPage({ jobs, reload, branches, users, currentUser, toast }) {
   );
 }
 
+// ── EXPORT HELPERS ────────────────────────────────────────────────────────────
+function buildRows(jobs, branches, users) {
+  return jobs.map(j => {
+    const b = branches.find(x => x.id === j.branchId);
+    const u = users.find(x => x.id === j.userId);
+    const e = calcEarnings(j, RATES);
+    return {
+      "Date":           j.departureTime ? new Date(j.departureTime).toLocaleDateString("sk-SK") : "",
+      "Branch ID":      j.branchId,
+      "City":           b?.city ?? "",
+      "Address":        b?.address ?? "",
+      "Technician":     u?.name ?? "",
+      "Departure":      j.departureTime ? new Date(j.departureTime).toLocaleString("sk-SK") : "",
+      "Arrival":        j.arrivalTime   ? new Date(j.arrivalTime).toLocaleString("sk-SK")   : "",
+      "Return":         j.returnTime    ? new Date(j.returnTime).toLocaleString("sk-SK")     : "",
+      "Hours Worked":   j.hoursWorked,
+      "Km Travelled":   j.kmTravelled,
+      "MikroTik":       b?.hasMikrotik ? "Yes" : "No",
+      "Servers":        b?.servers ?? "",
+      "Switches":       b?.switches ?? "",
+      "Travel (€)":     e.travel.toFixed(2),
+      "Labor (€)":      e.labor.toFixed(2),
+      "Expenses (€)":   e.expenses.toFixed(2),
+      "Gross (€)":      e.gross.toFixed(2),
+      "Net (€)":        e.net.toFixed(2),
+      "Description":    j.description,
+    };
+  });
+}
+
+function exportCSV(rows, filename) {
+  if (!rows.length) return;
+  const cols = Object.keys(rows[0]);
+  const esc  = v => `"${String(v ?? "").replace(/"/g, '""')}"`;
+  const lines = [
+    cols.map(esc).join(";"),
+    ...rows.map(r => cols.map(c => esc(r[c])).join(";")),
+  ];
+  const csv  = lines.join("
+");
+  const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement("a"); a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+
+async function exportXLSX(rows, filename) {
+  if (!rows.length) return;
+  // Load SheetJS from CDN
+  if (!window.XLSX) {
+    await new Promise((res, rej) => {
+      const s = document.createElement("script");
+      s.src = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";
+      s.onload = res; s.onerror = rej;
+      document.head.appendChild(s);
+    });
+  }
+  const ws = window.XLSX.utils.json_to_sheet(rows);
+  // Set column widths
+  ws["!cols"] = Object.keys(rows[0]).map(k => ({ wch: Math.max(k.length, 12) }));
+  const wb = window.XLSX.utils.book_new();
+  window.XLSX.utils.book_append_sheet(wb, ws, "Service Jobs");
+  window.XLSX.writeFile(wb, filename);
+}
+
 // ── EARNINGS PAGE ─────────────────────────────────────────────────────────────
 function EarningsPage({ jobs, branches, users, currentUser }) {
-  const [filterUser, setFilterUser] = useState(currentUser.role==="admin"?"":String(currentUser.id));
-  const [filterYear, setFilterYear] = useState("");
+  const [filterUser,  setFilterUser]  = useState(currentUser.role==="admin"?"":String(currentUser.id));
+  const [filterYear,  setFilterYear]  = useState("");
   const [filterMonth, setFilterMonth] = useState("");
-  const years = [...new Set(jobs.map(j=>new Date(j.departureTime).getFullYear()))].sort((a,b)=>b-a);
+  const [exporting,   setExporting]   = useState(false);
+  const years  = [...new Set(jobs.map(j=>new Date(j.departureTime).getFullYear()))].sort((a,b)=>b-a);
   const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
   const filtered = jobs.filter(j=>{
@@ -902,7 +969,7 @@ function EarningsPage({ jobs, branches, users, currentUser }) {
     if(filterMonth && d.getMonth()!==Number(filterMonth)) return false;
     if(currentUser.role!=="admin" && j.userId!==currentUser.id) return false;
     return true;
-  });
+  }).sort((a,b)=>new Date(a.departureTime)-new Date(b.departureTime));
 
   const totals = filtered.reduce((acc,j)=>{
     const e=calcEarnings(j,RATES);
@@ -922,9 +989,37 @@ function EarningsPage({ jobs, branches, users, currentUser }) {
     byMonth[key].expenses+=e.expenses; byMonth[key].net+=e.net;
   });
 
+  const getFilename = (ext) => {
+    const u = filterUser ? users.find(x=>x.id===Number(filterUser))?.name ?? "all" : "all";
+    const y = filterYear || "all";
+    const m = filterMonth !== "" ? months[Number(filterMonth)] : "all";
+    return `yell-lidl-${u}-${y}-${m}.${ext}`.toLowerCase().replace(/\s+/g,"-");
+  };
+
+  const doExport = async (fmt) => {
+    if (!filtered.length) return;
+    setExporting(true);
+    try {
+      const rows = buildRows(filtered, branches, users);
+      if (fmt === "csv") exportCSV(rows, getFilename("csv"));
+      else await exportXLSX(rows, getFilename("xlsx"));
+    } catch(e) { alert("Export error: "+e.message); }
+    setExporting(false);
+  };
+
   return (
     <div>
-      <div className="page-header"><div><div className="page-title">Earnings Summary</div><div className="page-sub">Financial overview</div></div></div>
+      <div className="page-header">
+        <div><div className="page-title">Earnings Summary</div><div className="page-sub">Financial overview</div></div>
+        <div className="flex" style={{gap:8,flexWrap:"wrap"}}>
+          <button className="btn btn-ghost btn-sm" onClick={()=>doExport("csv")} disabled={exporting||!filtered.length}>
+            <Icon name="download" size={14}/> CSV
+          </button>
+          <button className="btn btn-primary btn-sm" onClick={()=>doExport("xlsx")} disabled={exporting||!filtered.length}>
+            <Icon name="download" size={14}/> {exporting?"Exporting…":"Excel"}
+          </button>
+        </div>
+      </div>
       <div className="page-body">
         <div className="filters">
           {currentUser.role==="admin" && <select className="filter-select" value={filterUser} onChange={e=>setFilterUser(e.target.value)}>
