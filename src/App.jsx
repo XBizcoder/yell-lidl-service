@@ -926,8 +926,7 @@ function exportCSV(rows, filename) {
     cols.map(esc).join(";"),
     ...rows.map(r => cols.map(c => esc(r[c])).join(";")),
   ];
-  const csv  = lines.join("
-");
+  const csv  = lines.join("\r\n");
   const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement("a"); a.href = url; a.download = filename; a.click();
