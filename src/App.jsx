@@ -658,14 +658,14 @@ function Dashboard({ jobs, branches, users, currentUser }) {
             {recent.length===0
               ? <div className="empty-state"><div className="empty-icon"><Icon name="job" size={32}/></div>No jobs yet</div>
               : <table>
-                  <thead><tr><th>Date</th><th>Branch</th><th>City</th><th>Hours</th><th>Km</th><th>Net</th></tr></thead>
+                  <thead><tr><th>Date</th><th>Branch</th><th>City / Address</th><th>Hours</th><th>Km</th><th>Net</th></tr></thead>
                   <tbody>{recent.map(j=>{
                     const b=branches.find(x=>x.id===j.branchId);
                     const e=calcEarnings(j,RATES);
                     return <tr key={j.id}>
                       <td className="td-mono">{fmtDate(j.departureTime)}</td>
                       <td className="td-mono">{j.branchId}</td>
-                      <td>{b?.city??"—"}</td>
+                      <td>{b?.city??"—"}{b?.address ? <span style={{color:"var(--text3)",marginLeft:6}}>{b.address}</span> : ""}</td>
                       <td className="td-mono">{j.hoursWorked} h</td>
                       <td className="td-mono">{j.kmTravelled?.toFixed(1)} km</td>
                       <td className="td-mono text-amber">{fmtCur(e.net)}</td>
@@ -853,7 +853,7 @@ function JobsPage({ jobs, reload, branches, users, currentUser, toast }) {
             : <table>
                 <thead><tr>
                   <SH col="departureTime" label="Date"/>
-                  <th>Branch</th><th>City</th>
+                  <th>Branch</th><th>City / Address</th>
                   {currentUser.role==="admin"&&<th>Technician</th>}
                   <SH col="hoursWorked" label="Hours"/>
                   <SH col="kmTravelled" label="Km"/>
@@ -866,7 +866,7 @@ function JobsPage({ jobs, reload, branches, users, currentUser, toast }) {
                   return <tr key={j.id}>
                     <td className="td-mono">{fmtDate(j.departureTime)}</td>
                     <td className="td-mono">{j.branchId}</td>
-                    <td>{b?.city??"—"}</td>
+                    <td>{b?.city??"—"}{b?.address ? <span style={{color:"var(--text3)",marginLeft:6}}>{b.address}</span> : ""}</td>
                     {currentUser.role==="admin"&&<td>{u?.name??"—"}</td>}
                     <td className="td-mono">{j.hoursWorked} h</td>
                     <td className="td-mono">{j.kmTravelled?.toFixed(1)}</td>
