@@ -101,6 +101,7 @@ const Icon = ({ name, size = 16 }) => {
     settings: "M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z",
     refresh:  "M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15",
     download: "M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4",
+    task:     "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4",
   };
   return (
     <svg width={size} height={size} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
@@ -225,6 +226,23 @@ const CSS = `
   .earn-item{background:var(--bg3);border-radius:var(--radius);padding:14px;text-align:center;}
   .earn-label{font-size:11px;color:var(--text3);font-family:'IBM Plex Mono',monospace;margin-bottom:6px;}
   .earn-val{font-size:18px;font-weight:600;font-family:'IBM Plex Mono',monospace;color:#0050AA;word-break:break-all;}
+
+  /* ── TASKS ── */
+  .task-card{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:10px;box-shadow:0 1px 4px rgba(0,80,170,0.06);transition:box-shadow 0.15s;}
+  .task-card:hover{box-shadow:0 2px 8px rgba(0,80,170,0.12);}
+  .task-card.status-open{border-left:4px solid #f6c01a;}
+  .task-card.status-inprogress{border-left:4px solid #0050AA;}
+  .task-card.status-done{border-left:4px solid var(--green);opacity:0.7;}
+  .task-header{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px;}
+  .task-title{font-size:14px;font-weight:600;color:var(--text);}
+  .task-meta{display:flex;flex-wrap:wrap;gap:8px;font-size:12px;color:var(--text3);font-family:'IBM Plex Mono',monospace;margin-bottom:8px;}
+  .task-desc{font-size:13px;color:var(--text2);line-height:1.5;white-space:pre-wrap;}
+  .task-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;}
+  .status-badge-open{background:rgba(246,192,26,0.15);color:#b08800;border:1px solid rgba(246,192,26,0.4);padding:2px 8px;border-radius:100px;font-size:11px;font-weight:500;font-family:'IBM Plex Mono',monospace;}
+  .status-badge-inprogress{background:rgba(0,80,170,0.1);color:#0050AA;border:1px solid rgba(0,80,170,0.25);padding:2px 8px;border-radius:100px;font-size:11px;font-weight:500;font-family:'IBM Plex Mono',monospace;}
+  .status-badge-done{background:rgba(63,185,80,0.1);color:var(--green);border:1px solid rgba(63,185,80,0.2);padding:2px 8px;border-radius:100px;font-size:11px;font-weight:500;font-family:'IBM Plex Mono',monospace;}
+  .due-overdue{color:var(--red);font-weight:600;}
+  .due-soon{color:#e07b00;font-weight:600;}
 
   /* ── PHOTOS ── */
   .photo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-top:12px;}
@@ -635,6 +653,227 @@ function JobDetail({ job, branch, user, onClose, onEdit, toast }) {
   );
 }
 
+
+const mapTask = t => ({
+  id: t.id,
+  branchId: t.branch_id,
+  userId: t.user_id,
+  title: t.title || "",
+  description: t.description || "",
+  status: t.status || "open",
+  dueDate: t.due_date,
+  createdAt: t.created_at,
+});
+
+function dueBadge(dueDate) {
+  if (!dueDate) return null;
+  const days = Math.ceil((new Date(dueDate) - new Date()) / 86400000);
+  if (days < 0)  return <span className="due-overdue">⚠ Overdue {Math.abs(days)}d</span>;
+  if (days === 0) return <span className="due-soon">⚠ Due today</span>;
+  if (days <= 3)  return <span className="due-soon">Due in {days}d</span>;
+  return <span>{new Date(dueDate).toLocaleDateString("sk-SK")}</span>;
+}
+
+function StatusBadge({ status }) {
+  if (status === "open")       return <span className="status-badge-open">Open</span>;
+  if (status === "inprogress") return <span className="status-badge-inprogress">In Progress</span>;
+  return <span className="status-badge-done">Done</span>;
+}
+
+// ── TASK FORM ─────────────────────────────────────────────────────────────────
+function TaskForm({ task, branches, users, currentUser, onSave, onClose }) {
+  const [form, setForm] = useState(task ? {
+    ...task,
+    dueDate: task.dueDate ? task.dueDate.slice(0,10) : "",
+  } : {
+    branchId: "", userId: currentUser.id,
+    title: "", description: "", status: "open",
+    dueDate: toLocalDT(new Date()).slice(0,10),
+  });
+  const [saving, setSaving] = useState(false);
+  const set = (k,v) => setForm(f=>({...f,[k]:v}));
+  const valid = form.branchId && form.title;
+  const handle = async () => { if(!valid) return; setSaving(true); await onSave(form); setSaving(false); };
+  return (
+    <div className="modal-bg"><div className="modal">
+      <div className="modal-header">
+        <span className="modal-title">{task?"Edit Task":"New Task"}</span>
+        <button className="btn btn-ghost btn-sm" onClick={onClose}><Icon name="x"/></button>
+      </div>
+      <div className="modal-body">
+        <div className="field"><label>Task Title</label><input value={form.title} onChange={e=>set("title",e.target.value)} placeholder="e.g. Replace switch, Check UPS…"/></div>
+        <div className="field-row">
+          <div className="field"><label>Branch</label>
+            <select value={form.branchId} onChange={e=>set("branchId",e.target.value)}>
+              <option value="">— Select branch —</option>
+              {branches.map(b=><option key={b.id} value={b.id}>[{b.id}] {b.city} — {b.address}</option>)}
+            </select>
+          </div>
+          <div className="field"><label>Assigned to</label>
+            <select value={form.userId} onChange={e=>set("userId",Number(e.target.value))}>
+              {users.map(u=><option key={u.id} value={u.id}>{u.name}</option>)}
+            </select>
+          </div>
+        </div>
+        <div className="field-row">
+          <div className="field"><label>Due Date</label><input type="date" value={form.dueDate} onChange={e=>set("dueDate",e.target.value)}/></div>
+          <div className="field"><label>Status</label>
+            <select value={form.status} onChange={e=>set("status",e.target.value)}>
+              <option value="open">Open</option>
+              <option value="inprogress">In Progress</option>
+              <option value="done">Done</option>
+            </select>
+          </div>
+        </div>
+        <div className="field"><label>Description</label><textarea value={form.description} onChange={e=>set("description",e.target.value)} rows={4} placeholder="What needs to be done…"/></div>
+      </div>
+      <div className="modal-footer">
+        <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
+        <button className="btn btn-primary" onClick={handle} disabled={!valid||saving}><Icon name="check"/> {saving?"Saving…":"Save Task"}</button>
+      </div>
+    </div></div>
+  );
+}
+
+// ── TASKS PAGE ────────────────────────────────────────────────────────────────
+function TasksPage({ branches, users, currentUser, toast, setPage, setPrefilledJob }) {
+  const [tasks, setTasks] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [modal, setModal] = useState(null);
+  const [editingTask, setEditingTask] = useState(null);
+  const [filterStatus, setFilterStatus] = useState("open,inprogress");
+  const [filterUser, setFilterUser] = useState("");
+  const [search, setSearch] = useState("");
+
+  const loadTasks = useCallback(async () => {
+    try {
+      const res = await db.get("tasks","?order=due_date.asc");
+      setTasks(res.map(mapTask));
+    } catch(e) { toast("Error loading tasks: "+e.message,"err"); }
+    finally { setLoading(false); }
+  }, []);
+
+  useEffect(()=>{ loadTasks(); },[loadTasks]);
+
+  const saveTask = async (data) => {
+    try {
+      const row = { branch_id:data.branchId, user_id:data.userId, title:data.title, description:data.description, status:data.status, due_date:data.dueDate||null };
+      if (!editingTask) { await db.post("tasks",{...row,id:uid()}); }
+      else { await db.patch("tasks",`id=eq.${editingTask.id}`,row); }
+      await loadTasks(); setModal(null); setEditingTask(null);
+      toast("Task saved","ok");
+    } catch(e) { toast("Error: "+e.message,"err"); }
+  };
+
+  const delTask = async id => {
+    if (!confirm("Delete this task?")) return;
+    try { await db.delete("tasks",`id=eq.${id}`); await loadTasks(); toast("Task deleted","ok"); }
+    catch(e) { toast("Error: "+e.message,"err"); }
+  };
+
+  const setStatus = async (task, status) => {
+    try { await db.patch("tasks",`id=eq.${task.id}`,{status}); await loadTasks(); }
+    catch(e) { toast("Error: "+e.message,"err"); }
+  };
+
+  const convertToJob = (task) => {
+    const branch = branches.find(b=>b.id===task.branchId);
+    setPrefilledJob({
+      branchId: task.branchId,
+      userId: task.userId,
+      description: `[Task: ${task.title}]\n${task.description}`,
+      departureTime: toLocalDT(new Date()),
+      arrivalTime:   toLocalDT(new Date(Date.now()+2*3600000)),
+      hoursWorked:   "",
+      returnTime:    toLocalDT(new Date(Date.now()+4*3600000)),
+    });
+    setPage("jobs");
+    toast("Task loaded into new job — fill in times and save","ok");
+  };
+
+  const statuses = filterStatus ? filterStatus.split(",") : ["open","inprogress","done"];
+  const myTasks = currentUser.role==="admin" ? tasks : tasks.filter(t=>t.userId===currentUser.id);
+  const filtered = myTasks.filter(t=>{
+    if (!statuses.includes(t.status)) return false;
+    if (filterUser && t.userId!==Number(filterUser)) return false;
+    if (search && !t.title.toLowerCase().includes(search.toLowerCase()) && !t.description.toLowerCase().includes(search.toLowerCase())) return false;
+    return true;
+  });
+
+  const counts = { open:myTasks.filter(t=>t.status==="open").length, inprogress:myTasks.filter(t=>t.status==="inprogress").length, done:myTasks.filter(t=>t.status==="done").length };
+
+  return (
+    <div>
+      <div className="page-header">
+        <div><div className="page-title">Tasks</div><div className="page-sub">Planned service work</div></div>
+        <button className="btn btn-primary" onClick={()=>setModal("add")}><Icon name="plus"/> New Task</button>
+      </div>
+      <div className="page-body">
+        <div className="stats-grid" style={{gridTemplateColumns:"repeat(3,1fr)"}}>
+          <div className="stat-card" style={{borderTop:"3px solid #f6c01a",cursor:"pointer"}} onClick={()=>setFilterStatus("open")}>
+            <div className="stat-label">Open</div><div className="stat-value" style={{color:"#b08800"}}>{counts.open}</div>
+          </div>
+          <div className="stat-card" style={{borderTop:"3px solid #0050AA",cursor:"pointer"}} onClick={()=>setFilterStatus("inprogress")}>
+            <div className="stat-label">In Progress</div><div className="stat-value" style={{color:"#0050AA"}}>{counts.inprogress}</div>
+          </div>
+          <div className="stat-card" style={{borderTop:"3px solid var(--green)",cursor:"pointer"}} onClick={()=>setFilterStatus("done")}>
+            <div className="stat-label">Done</div><div className="stat-value" style={{color:"var(--green)"}}>{counts.done}</div>
+          </div>
+        </div>
+
+        <div className="filters">
+          <div className="search-wrap"><span className="search-icon"><Icon name="search" size={14}/></span><input className="filter-input" placeholder="Search tasks…" value={search} onChange={e=>setSearch(e.target.value)}/></div>
+          <select className="filter-select" value={filterStatus} onChange={e=>setFilterStatus(e.target.value)}>
+            <option value="open,inprogress">Active</option>
+            <option value="open">Open only</option>
+            <option value="inprogress">In Progress only</option>
+            <option value="done">Done only</option>
+            <option value="">All</option>
+          </select>
+          {currentUser.role==="admin" && <select className="filter-select" value={filterUser} onChange={e=>setFilterUser(e.target.value)}>
+            <option value="">All technicians</option>
+            {users.map(u=><option key={u.id} value={u.id}>{u.name}</option>)}
+          </select>}
+        </div>
+
+        {loading ? <div className="loading-wrap" style={{color:"var(--text3)"}}><div className="spinner"/></div>
+        : filtered.length===0
+          ? <div className="empty-state"><div className="empty-icon"><Icon name="task" size={32}/></div>No tasks found</div>
+          : filtered.map(t=>{
+              const b = branches.find(x=>x.id===t.branchId);
+              const u = users.find(x=>x.id===t.userId);
+              return (
+                <div key={t.id} className={`task-card status-${t.status}`}>
+                  <div className="task-header">
+                    <div>
+                      <div className="task-title">{t.title}</div>
+                      <div className="task-meta">
+                        <span>📍 [{t.branchId}] {b?.city} {b?.address}</span>
+                        <span>👤 {u?.name}</span>
+                        <span>📅 {dueBadge(t.dueDate)}</span>
+                      </div>
+                    </div>
+                    <StatusBadge status={t.status}/>
+                  </div>
+                  {t.description && <div className="task-desc">{t.description}</div>}
+                  <div className="task-actions">
+                    {t.status!=="open"       && <button className="btn btn-ghost btn-sm" onClick={()=>setStatus(t,"open")}>→ Open</button>}
+                    {t.status!=="inprogress" && <button className="btn btn-ghost btn-sm" onClick={()=>setStatus(t,"inprogress")}>→ In Progress</button>}
+                    {t.status!=="done"       && <button className="btn btn-ghost btn-sm" onClick={()=>setStatus(t,"done")}>→ Done</button>}
+                    <button className="btn btn-primary btn-sm" onClick={()=>convertToJob(t)}><Icon name="job" size={13}/> Create Job</button>
+                    <button className="btn btn-ghost btn-sm" onClick={()=>{setEditingTask(t);setModal("edit");}}><Icon name="edit" size={13}/></button>
+                    <button className="btn btn-danger btn-sm" onClick={()=>delTask(t.id)}><Icon name="trash" size={13}/></button>
+                  </div>
+                </div>
+              );
+            })
+        }
+      </div>
+      {modal && <TaskForm task={modal==="edit"?editingTask:null} branches={branches} users={users} currentUser={currentUser} onSave={saveTask} onClose={()=>{setModal(null);setEditingTask(null);}}/>}
+    </div>
+  );
+}
+
 // ── DASHBOARD ─────────────────────────────────────────────────────────────────
 function Dashboard({ jobs, branches, users, currentUser }) {
   const myJobs = currentUser.role==="admin" ? jobs : jobs.filter(j=>j.userId===currentUser.id);
@@ -774,10 +1013,15 @@ function BranchesPage({ branches, reload, isAdmin, toast }) {
 }
 
 // ── JOBS PAGE ─────────────────────────────────────────────────────────────────
-function JobsPage({ jobs, reload, branches, users, currentUser, toast }) {
+function JobsPage({ jobs, reload, branches, users, currentUser, toast, prefilledJob, clearPrefill }) {
   const [modal, setModal] = useState(null);
   const [detail, setDetail] = useState(null);
   const [editingJob, setEditingJob] = useState(null);
+
+  // Auto-open new job modal when arriving from Tasks
+  useEffect(()=>{
+    if (prefilledJob) { setModal("add"); }
+  }, [prefilledJob]);
   const [search, setSearch] = useState("");
   const [filterBranch, setFilterBranch] = useState("");
   const [filterUser, setFilterUser] = useState("");
@@ -882,7 +1126,7 @@ function JobsPage({ jobs, reload, branches, users, currentUser, toast }) {
               </table>}
         </div></div>
       </div>
-      {(modal==="add"||modal==="edit") && <JobForm job={modal==="edit"?editingJob:null} branches={branches} users={users} currentUser={currentUser} onSave={saveJob} onClose={()=>{setModal(null);setEditingJob(null);}}/>}
+      {(modal==="add"||modal==="edit") && <JobForm job={modal==="edit"?editingJob:prefilledJob||null} branches={branches} users={users} currentUser={currentUser} onSave={saveJob} onClose={()=>{setModal(null);setEditingJob(null);if(clearPrefill)clearPrefill();}}/>}
       {detail && <JobDetail job={detail} branch={branches.find(b=>b.id===detail.branchId)} user={users.find(u=>u.id===detail.userId)} onClose={()=>setDetail(null)} onEdit={()=>{setEditingJob(detail);setModal("edit");setDetail(null);}} toast={toast}/>}
     </div>
   );
@@ -1139,6 +1383,7 @@ function SettingsPage({ rates, setRates, toast }) {
 // ── APP ───────────────────────────────────────────────────────────────────────
 export default function App() {
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 640);
+  const [prefilledJob, setPrefilledJob] = useState(null);
   useEffect(() => {
     const fn = () => setIsMobile(window.innerWidth <= 640);
     window.addEventListener('resize', fn);
@@ -1245,6 +1490,7 @@ export default function App() {
   const nav = [
     {id:"dashboard", label:"Dashboard",    icon:"list"},
     {id:"jobs",      label:"Service Jobs", icon:"job"},
+    {id:"tasks",     label:"Tasks",        icon:"task"},
     {id:"branches",  label:"Branches",     icon:"branch"},
     {id:"earnings",  label:"Earnings",     icon:"earnings"},
     ...(isAdmin ? [{id:"users",label:"Users",icon:"users"},{id:"settings",label:"Settings",icon:"settings"}] : []),
@@ -1277,7 +1523,8 @@ export default function App() {
       </div>}
       <div className="main" style={isMobile ? {marginLeft:0, paddingBottom:'calc(72px + env(safe-area-inset-bottom))'} : {}}>
         {page==="dashboard" && <Dashboard jobs={jobs} branches={branches} users={users} currentUser={currentUser}/>}
-        {page==="jobs"      && <JobsPage jobs={jobs} reload={loadAll} branches={branches} users={users} currentUser={currentUser} toast={toast}/>}
+        {page==="jobs"      && <JobsPage jobs={jobs} reload={loadAll} branches={branches} users={users} currentUser={currentUser} toast={toast} prefilledJob={prefilledJob} clearPrefill={()=>setPrefilledJob(null)}/>}
+        {page==="tasks"     && <TasksPage branches={branches} users={users} currentUser={currentUser} toast={toast} setPage={setPage} setPrefilledJob={setPrefilledJob}/>}
         {page==="branches"  && <BranchesPage branches={branches} reload={loadAll} isAdmin={isAdmin} toast={toast}/>}
         {page==="earnings"  && <EarningsPage jobs={jobs} branches={branches} users={users} currentUser={currentUser}/>}
         {page==="users" && isAdmin && <UsersPage users={users} reload={loadAll} currentUser={currentUser} toast={toast}/>}
@@ -1290,7 +1537,7 @@ export default function App() {
       {nav.map(n=>(
         <button key={n.id} className={`bottom-nav-item ${page===n.id?"active":""}`} onClick={()=>setPage(n.id)}>
           <Icon name={n.icon} size={22}/>
-          <span>{n.label==="Dashboard"?"Home":n.label==="Service Jobs"?"Jobs":n.label==="Branches"?"Stores":n.label==="Earnings"?"Money":n.label}</span>
+          <span>{n.label==="Dashboard"?"Home":n.label==="Service Jobs"?"Jobs":n.label==="Branches"?"Stores":n.label==="Earnings"?"Money":n.label==="Tasks"?"Tasks":n.label}</span>
         </button>
       ))}
       <button className="bottom-nav-item" style={{color:"rgba(255,255,255,0.6)"}} onClick={()=>{ localStorage.removeItem("sv_user"); setCurrentUser(null); }}><Icon name="logout" size={20}/>Out</button>
