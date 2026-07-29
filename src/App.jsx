@@ -27,7 +27,8 @@ const db = {
   },
 };
 
-const mapBranch = b => ({ id: b.id, city: b.city, address: b.address, description: b.description || "", distanceKm: parseFloat(b.distance_km) || 0, servers: b.servers || 0, switches: b.switches || 0, hasMikrotik: b.has_mikrotik || false });
+const mapCustomer = c => ({ id: c.id, name: c.name, color: c.color || "#0050AA" });
+const mapBranch = b => ({ id: b.id, customerId: b.customer_id || "", city: b.city, address: b.address, description: b.description || "", distanceKm: parseFloat(b.distance_km) || 0, servers: b.servers || 0, switches: b.switches || 0, hasMikrotik: b.has_mikrotik || false });
 const mapJob    = j => ({ id: j.id, branchId: j.branch_id, userId: j.user_id, departureTime: j.departure_time, arrivalTime: j.arrival_time, hoursWorked: parseFloat(j.hours_worked) || 0, returnTime: j.return_time, kmTravelled: parseFloat(j.km_travelled) || 0, description: j.description || "" });
 const mapUser   = u => ({ id: u.id, username: u.username, password: u.password, name: u.name, role: u.role });
 const mapPhoto  = p => ({ id: p.id, refType: p.ref_type, refId: p.ref_id, path: p.path, takenAt: p.taken_at, url: `${SUPA_URL}/storage/v1/object/public/photos/${p.path}` });
@@ -230,6 +231,10 @@ const CSS = `
   .earn-label{font-size:11px;color:var(--text3);font-family:'IBM Plex Mono',monospace;margin-bottom:6px;}
   .earn-val{font-size:18px;font-weight:600;font-family:'IBM Plex Mono',monospace;color:#0050AA;word-break:break-all;}
 
+  /* ── CUSTOMER BADGE ── */
+  .customer-badge{display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border-radius:100px;font-size:11px;font-weight:600;font-family:'IBM Plex Mono',monospace;border:1px solid;}
+  .customer-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+
   /* ── TASKS ── */
   .task-card{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:10px;box-shadow:0 1px 4px rgba(0,80,170,0.06);transition:box-shadow 0.15s;}
   .task-card:hover{box-shadow:0 2px 8px rgba(0,80,170,0.12);}
@@ -368,8 +373,8 @@ function Toast({ msg, type, onDone }) {
 }
 
 // ── BRANCH FORM ───────────────────────────────────────────────────────────────
-function BranchForm({ branch, onSave, onClose }) {
-  const [form, setForm] = useState(branch || { id:"", city:"", address:"", description:"", distanceKm:"", servers:0, switches:0, hasMikrotik:false });
+function BranchForm({ branch, customers, onSave, onClose }) {
+  const [form, setForm] = useState(branch || { id:"", customerId:"", city:"", address:"", description:"", distanceKm:"", servers:0, switches:0, hasMikrotik:false });
   const [saving, setSaving] = useState(false);
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
   const valid = /^\d{4}$/.test(form.id) && form.city && form.address;
@@ -383,6 +388,12 @@ function BranchForm({ branch, onSave, onClose }) {
     <div className="modal-bg"><div className="modal">
       <div className="modal-header"><span className="modal-title">{branch ? "Edit Branch" : "Add Branch"}</span><button className="btn btn-ghost btn-sm" onClick={onClose}><Icon name="x"/></button></div>
       <div className="modal-body">
+        <div className="field"><label>Customer</label>
+          <select value={form.customerId} onChange={e=>set("customerId",e.target.value)}>
+            <option value="">— Select customer —</option>
+            {customers.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+        </div>
         <div className="field-row">
           <div className="field"><label>Branch ID (4 digits)</label><input value={form.id} onChange={e=>set("id",e.target.value)} maxLength={4} disabled={!!branch}/></div>
           <div className="field"><label>City</label><input value={form.city} onChange={e=>set("city",e.target.value)}/></div>
@@ -408,7 +419,7 @@ function BranchForm({ branch, onSave, onClose }) {
 }
 
 // ── JOB FORM ──────────────────────────────────────────────────────────────────
-function JobForm({ job, branches, users, currentUser, onSave, onClose }) {
+function JobForm({ job, branches, customers, users, currentUser, onSave, onClose }) {
   const now = new Date();
   const [form, setForm] = useState(job ? {
     ...job,
@@ -444,7 +455,7 @@ function JobForm({ job, branches, users, currentUser, onSave, onClose }) {
           <div className="field"><label>Branch</label>
             <select value={form.branchId} onChange={e=>set("branchId",e.target.value)}>
               <option value="">— Select branch —</option>
-              {branches.map(b=><option key={b.id} value={b.id}>[{b.id}] {b.city} — {b.address}</option>)}
+              {branches.map(b=>{const c=customers?.find(x=>x.id===b.customerId); return <option key={b.id} value={b.id}>{c?`[${c.name}] `:""}{b.id} {b.city} — {b.address}</option>;})}
             </select>
           </div>
           <div className="field"><label>Technician</label>
@@ -658,6 +669,115 @@ function JobDetail({ job, branch, user, onClose, onEdit, toast }) {
 }
 
 
+
+// ── CUSTOMER BADGE ─────────────────────────────────────────────────────────────
+function CustomerBadge({ customer }) {
+  if (!customer) return null;
+  const bg = customer.color + "22";
+  const border = customer.color + "55";
+  return (
+    <span className="customer-badge" style={{background:bg,borderColor:border,color:customer.color}}>
+      <span className="customer-dot" style={{background:customer.color}}/>
+      {customer.name}
+    </span>
+  );
+}
+
+// ── CUSTOMER FORM ──────────────────────────────────────────────────────────────
+function CustomerForm({ customer, onSave, onClose }) {
+  const PRESET_COLORS = ["#0050AA","#e60a14","#f6c01a","#1a7f37","#e07b00","#8b5cf6","#0891b2","#be185d"];
+  const [form, setForm] = useState(customer || { name:"", color:"#0050AA" });
+  const [saving, setSaving] = useState(false);
+  const set = (k,v) => setForm(f=>({...f,[k]:v}));
+  const valid = form.name.trim();
+  const handle = async () => { if(!valid) return; setSaving(true); await onSave(form); setSaving(false); };
+  return (
+    <div className="modal-bg"><div className="modal">
+      <div className="modal-header">
+        <span className="modal-title">{customer?"Edit Customer":"Add Customer"}</span>
+        <button className="btn btn-ghost btn-sm" onClick={onClose}><Icon name="x"/></button>
+      </div>
+      <div className="modal-body">
+        <div className="field"><label>Customer Name</label><input value={form.name} onChange={e=>set("name",e.target.value)} placeholder="e.g. LIDL, Kaufland…"/></div>
+        <div className="field"><label>Brand Color</label>
+          <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:10}}>
+            {PRESET_COLORS.map(c=>(
+              <div key={c} onClick={()=>set("color",c)} style={{width:32,height:32,borderRadius:"50%",background:c,cursor:"pointer",border:form.color===c?"3px solid #000":"3px solid transparent",flexShrink:0}}/>
+            ))}
+          </div>
+          <input type="color" value={form.color} onChange={e=>set("color",e.target.value)} style={{width:48,height:36,padding:2,border:"1px solid var(--border2)",borderRadius:6,cursor:"pointer",background:"#fff"}}/>
+          <span style={{marginLeft:10,fontSize:13,color:"var(--text2)"}}>or pick custom</span>
+        </div>
+        <div style={{marginTop:12}}>
+          <div className="detail-label" style={{marginBottom:6}}>Preview</div>
+          <CustomerBadge customer={{...form}}/>
+        </div>
+      </div>
+      <div className="modal-footer">
+        <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
+        <button className="btn btn-primary" onClick={handle} disabled={!valid||saving}><Icon name="check"/> {saving?"Saving…":"Save"}</button>
+      </div>
+    </div></div>
+  );
+}
+
+// ── CUSTOMERS PAGE ─────────────────────────────────────────────────────────────
+function CustomersPage({ customers, branches, reload, isAdmin, toast }) {
+  const [modal, setModal] = useState(null);
+
+  const save = async (data) => {
+    try {
+      if (!modal || modal==="add") {
+        await db.post("customers",{id:uid(),name:data.name,color:data.color});
+      } else {
+        await db.patch("customers",`id=eq.${modal.id}`,{name:data.name,color:data.color});
+      }
+      await reload(); setModal(null); toast("Customer saved","ok");
+    } catch(e){ toast("Error: "+e.message,"err"); }
+  };
+
+  const del = async id => {
+    const linked = branches.filter(b=>b.customerId===id).length;
+    if (linked>0) return toast(`Cannot delete — ${linked} branch(es) linked to this customer`,"err");
+    if (!confirm("Delete customer?")) return;
+    try { await db.delete("customers",`id=eq.${id}`); await reload(); toast("Deleted","ok"); }
+    catch(e){ toast("Error: "+e.message,"err"); }
+  };
+
+  return (
+    <div>
+      <div className="page-header">
+        <div><div className="page-title">Customers</div><div className="page-sub">{customers.length} customers</div></div>
+        {isAdmin && <button className="btn btn-primary" onClick={()=>setModal("add")}><Icon name="plus"/> Add Customer</button>}
+      </div>
+      <div className="page-body">
+        <div className="card"><div className="table-wrap">
+          {customers.length===0
+            ? <div className="empty-state"><div className="empty-icon"><Icon name="branch" size={32}/></div>No customers yet</div>
+            : <table>
+                <thead><tr><th>Customer</th><th>Branches</th><th>Color</th>{isAdmin&&<th></th>}</tr></thead>
+                <tbody>{customers.map(c=>{
+                  const branchCount = branches.filter(b=>b.customerId===c.id).length;
+                  return (
+                    <tr key={c.id}>
+                      <td><CustomerBadge customer={c}/></td>
+                      <td className="td-mono">{branchCount}</td>
+                      <td><div style={{display:"flex",alignItems:"center",gap:8}}><div style={{width:20,height:20,borderRadius:"50%",background:c.color,border:"1px solid rgba(0,0,0,0.1)"}}/><span className="td-mono">{c.color}</span></div></td>
+                      {isAdmin&&<td><div className="flex gap-4">
+                        <button className="btn btn-ghost btn-sm" onClick={()=>setModal(c)}><Icon name="edit" size={13}/></button>
+                        <button className="btn btn-danger btn-sm" onClick={()=>del(c.id)}><Icon name="trash" size={13}/></button>
+                      </div></td>}
+                    </tr>
+                  );
+                })}</tbody>
+              </table>}
+        </div></div>
+      </div>
+      {modal && <CustomerForm customer={typeof modal==="object"&&modal!=="add"?modal:null} onSave={save} onClose={()=>setModal(null)}/>}
+    </div>
+  );
+}
+
 const mapTask = t => ({
   id: t.id,
   branchId: t.branch_id,
@@ -685,7 +805,7 @@ function StatusBadge({ status }) {
 }
 
 // ── TASK FORM ─────────────────────────────────────────────────────────────────
-function TaskForm({ task, branches, users, currentUser, onSave, onClose }) {
+function TaskForm({ task, branches, customers, users, currentUser, onSave, onClose }) {
   const [form, setForm] = useState(task ? {
     ...task,
     dueDate: task.dueDate ? task.dueDate.slice(0,10) : "",
@@ -710,7 +830,7 @@ function TaskForm({ task, branches, users, currentUser, onSave, onClose }) {
           <div className="field"><label>Branch</label>
             <select value={form.branchId} onChange={e=>set("branchId",e.target.value)}>
               <option value="">— Select branch —</option>
-              {branches.map(b=><option key={b.id} value={b.id}>[{b.id}] {b.city} — {b.address}</option>)}
+              {branches.map(b=>{const c=customers?.find(x=>x.id===b.customerId); return <option key={b.id} value={b.id}>{c?`[${c.name}] `:""}{b.id} {b.city} — {b.address}</option>;})}
             </select>
           </div>
           <div className="field"><label>Assigned to</label>
@@ -740,7 +860,7 @@ function TaskForm({ task, branches, users, currentUser, onSave, onClose }) {
 }
 
 // ── TASKS PAGE ────────────────────────────────────────────────────────────────
-function TasksPage({ branches, users, currentUser, toast, setPage, setPrefilledJob }) {
+function TasksPage({ branches, customers, users, currentUser, toast, setPage, setPrefilledJob }) {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(null);
@@ -873,13 +993,13 @@ function TasksPage({ branches, users, currentUser, toast, setPage, setPrefilledJ
             })
         }
       </div>
-      {modal && <TaskForm task={modal==="edit"?editingTask:null} branches={branches} users={users} currentUser={currentUser} onSave={saveTask} onClose={()=>{setModal(null);setEditingTask(null);}}/>}
+      {modal && <TaskForm task={modal==="edit"?editingTask:null} branches={branches} customers={customers} users={users} currentUser={currentUser} onSave={saveTask} onClose={()=>{setModal(null);setEditingTask(null);}}/>}
     </div>
   );
 }
 
 // ── DASHBOARD ─────────────────────────────────────────────────────────────────
-function Dashboard({ jobs, branches, users, currentUser }) {
+function Dashboard({ jobs, branches, customers, users, currentUser }) {
   const myJobs = currentUser.role==="admin" ? jobs : jobs.filter(j=>j.userId===currentUser.id);
   const totalNet   = myJobs.reduce((s,j)=>s+calcEarnings(j,RATES).net,0);
   const totalKm    = myJobs.reduce((s,j)=>s+(j.kmTravelled||0),0);
@@ -901,11 +1021,12 @@ function Dashboard({ jobs, branches, users, currentUser }) {
             {recent.length===0
               ? <div className="empty-state"><div className="empty-icon"><Icon name="job" size={32}/></div>No jobs yet</div>
               : <table>
-                  <thead><tr><th>Date</th><th>Branch</th><th>City / Address</th><th>Hours</th><th>Km</th><th>Net</th></tr></thead>
+                  <thead><tr><th className="hide-mobile">Customer</th><th>Date</th><th>Branch</th><th>City / Address</th><th>Hours</th><th>Km</th><th>Net</th></tr></thead>
                   <tbody>{recent.map(j=>{
                     const b=branches.find(x=>x.id===j.branchId);
                     const e=calcEarnings(j,RATES);
                     return <tr key={j.id}>
+                      <td className="hide-mobile"><CustomerBadge customer={customers.find(c=>c.id===b?.customerId)}/></td>
                       <td className="td-mono">{fmtDate(j.departureTime)}</td>
                       <td className="td-mono">{j.branchId}</td>
                       <td>{b?.city??"—"}{b?.address ? <span style={{color:"var(--text3)",marginLeft:6}}>{b.address}</span> : ""}</td>
@@ -923,7 +1044,7 @@ function Dashboard({ jobs, branches, users, currentUser }) {
 }
 
 // ── BRANCH DETAIL ─────────────────────────────────────────────────────────────
-function BranchDetail({ branch, onClose, onEdit, toast }) {
+function BranchDetail({ branch, customers, onClose, onEdit, toast }) {
   return (
     <div className="modal-bg"><div className="modal modal-lg">
       <div className="modal-header">
@@ -939,6 +1060,7 @@ function BranchDetail({ branch, onClose, onEdit, toast }) {
       <div className="modal-body">
         <p className="section-title">Branch Info</p>
         <div className="detail-grid">
+          <div className="detail-item"><div className="detail-label">Customer</div><div className="detail-value"><CustomerBadge customer={customers?.find(c=>c.id===branch.customerId)}/></div></div>
           <div className="detail-item"><div className="detail-label">Branch ID</div><div className="detail-value mono">{branch.id}</div></div>
           <div className="detail-item"><div className="detail-label">City</div><div className="detail-value">{branch.city}</div></div>
           <div className="detail-item"><div className="detail-label">Address</div><div className="detail-value">{branch.address}</div></div>
@@ -956,18 +1078,23 @@ function BranchDetail({ branch, onClose, onEdit, toast }) {
 }
 
 // ── BRANCHES PAGE ─────────────────────────────────────────────────────────────
-function BranchesPage({ branches, reload, isAdmin, toast }) {
+function BranchesPage({ branches, customers, reload, isAdmin, toast }) {
   const [modal, setModal] = useState(null);
   const [detail, setDetail] = useState(null);
   const [search, setSearch] = useState("");
-  const filtered = branches.filter(b=>b.id.includes(search)||b.city.toLowerCase().includes(search.toLowerCase())||b.address.toLowerCase().includes(search.toLowerCase()));
+  const [filterCustomer, setFilterCustomer] = useState("");
+  const filtered = branches.filter(b=>{
+    if(filterCustomer && b.customerId!==filterCustomer) return false;
+    if(search && !b.id.includes(search)&&!b.city.toLowerCase().includes(search.toLowerCase())&&!b.address.toLowerCase().includes(search.toLowerCase())) return false;
+    return true;
+  });
 
   const save = async (data) => {
     try {
       if (modal.mode==="add") {
-        await db.post("branches",{id:data.id,city:data.city,address:data.address,description:data.description,distance_km:data.distanceKm,servers:data.servers,switches:data.switches,has_mikrotik:data.hasMikrotik});
+        await db.post("branches",{id:data.id,customer_id:data.customerId||null,city:data.city,address:data.address,description:data.description,distance_km:data.distanceKm,servers:data.servers,switches:data.switches,has_mikrotik:data.hasMikrotik});
       } else {
-        await db.patch("branches",`id=eq.${data.id}`,{city:data.city,address:data.address,description:data.description,distance_km:data.distanceKm,servers:data.servers,switches:data.switches,has_mikrotik:data.hasMikrotik});
+        await db.patch("branches",`id=eq.${data.id}`,{customer_id:data.customerId||null,city:data.city,address:data.address,description:data.description,distance_km:data.distanceKm,servers:data.servers,switches:data.switches,has_mikrotik:data.hasMikrotik});
       }
       await reload(); setModal(null); toast("Branch saved","ok");
     } catch(e){ toast("Error: "+e.message,"err"); }
@@ -988,14 +1115,19 @@ function BranchesPage({ branches, reload, isAdmin, toast }) {
       <div className="page-body">
         <div className="filters">
           <div className="search-wrap"><span className="search-icon"><Icon name="search" size={14}/></span><input className="filter-input" placeholder="Search…" value={search} onChange={e=>setSearch(e.target.value)}/></div>
+          <select className="filter-select" value={filterCustomer} onChange={e=>setFilterCustomer(e.target.value)}>
+            <option value="">All customers</option>
+            {customers.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
         </div>
         <div className="card"><div className="table-wrap">
           {filtered.length===0
             ? <div className="empty-state"><div className="empty-icon"><Icon name="branch" size={32}/></div>No branches</div>
             : <table>
-                <thead><tr><th>ID</th><th>City</th><th>Address</th><th>Distance</th><th className="hide-mobile">Servers</th><th className="hide-mobile">Switches</th><th>MikroTik</th><th className="hide-mobile">Description</th><th></th></tr></thead>
+                <thead><tr><th>Customer</th><th>ID</th><th>City</th><th>Address</th><th>Distance</th><th className="hide-mobile">Servers</th><th className="hide-mobile">Switches</th><th>MikroTik</th><th className="hide-mobile">Description</th><th></th></tr></thead>
                 <tbody>{filtered.map(b=>(
                   <tr key={b.id}>
+                    <td><CustomerBadge customer={customers.find(c=>c.id===b.customerId)}/></td>
                     <td className="td-mono">{b.id}</td><td>{b.city}</td><td>{b.address}</td>
                     <td className="td-mono hide-mobile">{b.distanceKm} km</td><td className="td-mono hide-mobile">{b.servers}</td><td className="td-mono hide-mobile">{b.switches}</td>
                     <td>{b.hasMikrotik?<span className="badge badge-green">Yes</span>:<span className="badge badge-red">No</span>}</td>
@@ -1010,8 +1142,8 @@ function BranchesPage({ branches, reload, isAdmin, toast }) {
               </table>}
         </div></div>
       </div>
-      {modal && <BranchForm branch={modal.branch} onSave={save} onClose={()=>setModal(null)}/>}
-      {detail && <BranchDetail branch={detail} onClose={()=>setDetail(null)} onEdit={()=>{setModal({mode:"edit",branch:detail});setDetail(null);}} toast={toast}/>}
+      {modal && <BranchForm branch={modal.branch} customers={customers} onSave={save} onClose={()=>setModal(null)}/>}
+      {detail && <BranchDetail branch={detail} customers={customers} onClose={()=>setDetail(null)} onEdit={()=>{setModal({mode:"edit",branch:detail});setDetail(null);}} toast={toast}/>}
     </div>
   );
 }
@@ -1067,8 +1199,8 @@ function JobsPage({ jobs, reload, branches, users, currentUser, toast, prefilled
     catch(e){ toast("Error: "+e.message,"err"); }
   };
 
-  const clearFilters = ()=>{ setSearch(""); setFilterBranch(""); setFilterCity(""); setFilterUser(""); setFilterDateFrom(""); setFilterDateTo(""); };
-  const hasFilters = search||filterBranch||filterCity||filterUser||filterDateFrom||filterDateTo;
+  const clearFilters = ()=>{ setSearch(""); setFilterCustomer(""); setFilterBranch(""); setFilterCity(""); setFilterUser(""); setFilterDateFrom(""); setFilterDateTo(""); };
+  const hasFilters = search||filterCustomer||filterBranch||filterCity||filterUser||filterDateFrom||filterDateTo;
 
   return (
     <div>
@@ -1079,9 +1211,13 @@ function JobsPage({ jobs, reload, branches, users, currentUser, toast, prefilled
       <div className="page-body">
         <div className="filters">
           <div className="search-wrap"><span className="search-icon"><Icon name="search" size={14}/></span><input className="filter-input" placeholder="Search…" value={search} onChange={e=>setSearch(e.target.value)}/></div>
+          <select className="filter-select" value={filterCustomer} onChange={e=>{setFilterCustomer(e.target.value);setFilterBranch("");}}>
+            <option value="">All customers</option>
+            {customers.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
           <select className="filter-select" value={filterBranch} onChange={e=>setFilterBranch(e.target.value)}>
             <option value="">All branches</option>
-            {branches.map(b=><option key={b.id} value={b.id}>[{b.id}] {b.city}</option>)}
+            {(filterCustomer ? branches.filter(b=>b.customerId===filterCustomer) : branches).map(b=><option key={b.id} value={b.id}>[{b.id}] {b.city}</option>)}
           </select>
           <select className="filter-select" value={filterCity} onChange={e=>setFilterCity(e.target.value)}>
             <option value="">All cities</option>
@@ -1101,6 +1237,7 @@ function JobsPage({ jobs, reload, branches, users, currentUser, toast, prefilled
             : <table>
                 <thead><tr>
                   <SH col="departureTime" label="Date"/>
+                  <th className="hide-mobile">Customer</th>
                   <th>Branch</th><th>City / Address</th>
                   {currentUser.role==="admin"&&<th>Technician</th>}
                   <SH col="hoursWorked" label="Hours"/>
@@ -1130,7 +1267,7 @@ function JobsPage({ jobs, reload, branches, users, currentUser, toast, prefilled
               </table>}
         </div></div>
       </div>
-      {(modal==="add"||modal==="edit") && <JobForm job={modal==="edit"?editingJob:prefilledJob||null} branches={branches} users={users} currentUser={currentUser} onSave={saveJob} onClose={()=>{setModal(null);setEditingJob(null);if(clearPrefill)clearPrefill();}}/>}
+      {(modal==="add"||modal==="edit") && <JobForm job={modal==="edit"?editingJob:prefilledJob||null} branches={branches} customers={customers} users={users} currentUser={currentUser} onSave={saveJob} onClose={()=>{setModal(null);setEditingJob(null);if(clearPrefill)clearPrefill();}}/>}
       {detail && <JobDetail job={detail} branch={branches.find(b=>b.id===detail.branchId)} user={users.find(u=>u.id===detail.userId)} onClose={()=>setDetail(null)} onEdit={()=>{setEditingJob(detail);setModal("edit");setDetail(null);}} toast={toast}/>}
     </div>
   );
@@ -1144,6 +1281,7 @@ function buildRows(jobs, branches, users) {
     const e = calcEarnings(j, RATES);
     return {
       "Date":           j.departureTime ? new Date(j.departureTime).toLocaleDateString("sk-SK") : "",
+      "Customer":       customers.find(c=>c.id===b?.customerId)?.name ?? "",
       "Branch ID":      j.branchId,
       "City":           b?.city ?? "",
       "Address":        b?.address ?? "",
@@ -1201,7 +1339,8 @@ async function exportXLSX(rows, filename) {
 }
 
 // ── EARNINGS PAGE ─────────────────────────────────────────────────────────────
-function EarningsPage({ jobs, branches, users, currentUser }) {
+function EarningsPage({ jobs, branches, customers, users, currentUser }) {
+  const [filterCustomer, setFilterCustomer] = useState("");
   const [filterUser,  setFilterUser]  = useState(currentUser.role==="admin"?"":String(currentUser.id));
   const [filterYear,  setFilterYear]  = useState("");
   const [filterMonth, setFilterMonth] = useState("");
@@ -1211,6 +1350,8 @@ function EarningsPage({ jobs, branches, users, currentUser }) {
 
   const filtered = jobs.filter(j=>{
     const d=new Date(j.departureTime);
+    const b=branches.find(x=>x.id===j.branchId);
+    if(filterCustomer && b?.customerId!==filterCustomer) return false;
     if(filterUser && j.userId!==Number(filterUser)) return false;
     if(filterYear && d.getFullYear()!==Number(filterYear)) return false;
     if(filterMonth && d.getMonth()!==Number(filterMonth)) return false;
@@ -1237,10 +1378,11 @@ function EarningsPage({ jobs, branches, users, currentUser }) {
   });
 
   const getFilename = (ext) => {
+    const cust = filterCustomer ? customers.find(x=>x.id===filterCustomer)?.name ?? "all" : "all";
     const u = filterUser ? users.find(x=>x.id===Number(filterUser))?.name ?? "all" : "all";
     const y = filterYear || "all";
     const m = filterMonth !== "" ? months[Number(filterMonth)] : "all";
-    return `yell-lidl-${u}-${y}-${m}.${ext}`.toLowerCase().replace(/\s+/g,"-");
+    return `yell-lidl-${cust}-${u}-${y}-${m}.${ext}`.toLowerCase().replace(/\s+/g,"-");
   };
 
   const doExport = async (fmt) => {
@@ -1269,6 +1411,10 @@ function EarningsPage({ jobs, branches, users, currentUser }) {
       </div>
       <div className="page-body">
         <div className="filters">
+          <select className="filter-select" value={filterCustomer} onChange={e=>setFilterCustomer(e.target.value)}>
+            <option value="">All customers</option>
+            {customers.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
           {currentUser.role==="admin" && <select className="filter-select" value={filterUser} onChange={e=>setFilterUser(e.target.value)}>
             <option value="">All technicians</option>
             {users.map(u=><option key={u.id} value={u.id}>{u.name}</option>)}
@@ -1394,6 +1540,7 @@ export default function App() {
     return () => window.removeEventListener('resize', fn);
   }, []);
 
+  const [customers, setCustomers] = useState([]);
   const [users,    setUsers]    = useState([]);
   const [branches, setBranches] = useState([]);
   const [jobs,     setJobs]     = useState([]);
@@ -1412,11 +1559,13 @@ export default function App() {
 
   const loadAll = useCallback(async () => {
     try {
-      const [u, b, j] = await Promise.all([
+      const [c, u, b, j] = await Promise.all([
+        db.get("customers","?order=name"),
         db.get("users","?order=id"),
         db.get("branches","?order=city"),
         db.get("jobs","?order=departure_time.desc"),
       ]);
+      setCustomers(c.map(mapCustomer));
       setUsers(u.map(mapUser));
       setBranches(b.map(mapBranch));
       setJobs(j.map(mapJob));
@@ -1503,11 +1652,12 @@ export default function App() {
 
   const isAdmin = currentUser.role==="admin";
   const nav = [
-    {id:"dashboard", label:"Dashboard",    icon:"list"},
-    {id:"jobs",      label:"Service Jobs", icon:"job"},
-    {id:"tasks",     label:"Tasks",        icon:"task"},
-    {id:"branches",  label:"Branches",     icon:"branch"},
-    {id:"earnings",  label:"Earnings",     icon:"earnings"},
+    {id:"dashboard",  label:"Dashboard",    icon:"list"},
+    {id:"jobs",       label:"Service Jobs", icon:"job"},
+    {id:"tasks",      label:"Tasks",        icon:"task"},
+    {id:"branches",   label:"Branches",     icon:"branch"},
+    {id:"customers",  label:"Customers",    icon:"users"},
+    {id:"earnings",   label:"Earnings",     icon:"earnings"},
     ...(isAdmin ? [{id:"users",label:"Users",icon:"users"},{id:"settings",label:"Settings",icon:"settings"}] : []),
   ];
 
@@ -1537,11 +1687,12 @@ export default function App() {
         </div>
       </div>}
       <div className="main" style={isMobile ? {marginLeft:0, paddingBottom:'calc(72px + env(safe-area-inset-bottom))'} : {}}>
-        {page==="dashboard" && <Dashboard jobs={jobs} branches={branches} users={users} currentUser={currentUser}/>}
-        {page==="jobs"      && <JobsPage jobs={jobs} reload={loadAll} branches={branches} users={users} currentUser={currentUser} toast={toast} prefilledJob={prefilledJob} clearPrefill={()=>setPrefilledJob(null)}/>}
-        {page==="tasks"     && <TasksPage branches={branches} users={users} currentUser={currentUser} toast={toast} setPage={setPage} setPrefilledJob={setPrefilledJob}/>}
-        {page==="branches"  && <BranchesPage branches={branches} reload={loadAll} isAdmin={isAdmin} toast={toast}/>}
-        {page==="earnings"  && <EarningsPage jobs={jobs} branches={branches} users={users} currentUser={currentUser}/>}
+        {page==="dashboard" && <Dashboard jobs={jobs} branches={branches} customers={customers} users={users} currentUser={currentUser}/>}
+        {page==="jobs"      && <JobsPage jobs={jobs} reload={loadAll} branches={branches} customers={customers} users={users} currentUser={currentUser} toast={toast} prefilledJob={prefilledJob} clearPrefill={()=>setPrefilledJob(null)}/>}
+        {page==="tasks"     && <TasksPage branches={branches} customers={customers} users={users} currentUser={currentUser} toast={toast} setPage={setPage} setPrefilledJob={setPrefilledJob}/>}
+        {page==="branches"  && <BranchesPage branches={branches} customers={customers} reload={loadAll} isAdmin={isAdmin} toast={toast}/>}
+        {page==="customers" && <CustomersPage customers={customers} branches={branches} reload={loadAll} isAdmin={isAdmin} toast={toast}/>}
+        {page==="earnings"  && <EarningsPage jobs={jobs} branches={branches} customers={customers} users={users} currentUser={currentUser}/>}
         {page==="users" && isAdmin && <UsersPage users={users} reload={loadAll} currentUser={currentUser} toast={toast}/>}
         {page==="settings" && isAdmin && <SettingsPage rates={rates} setRates={setRates} toast={toast}/>}
       </div>
@@ -1552,7 +1703,7 @@ export default function App() {
       {nav.map(n=>(
         <button key={n.id} className={`bottom-nav-item ${page===n.id?"active":""}`} onClick={()=>setPage(n.id)}>
           <Icon name={n.icon} size={22}/>
-          <span>{n.label==="Dashboard"?"Home":n.label==="Service Jobs"?"Jobs":n.label==="Branches"?"Stores":n.label==="Earnings"?"Money":n.label==="Tasks"?"Tasks":n.label}</span>
+          <span>{n.label==="Dashboard"?"Home":n.label==="Service Jobs"?"Jobs":n.label==="Branches"?"Stores":n.label==="Earnings"?"Money":n.label==="Tasks"?"Tasks":n.label==="Customers"?"Clients":n.label}</span>
         </button>
       ))}
       <button className="bottom-nav-item" style={{color:"rgba(255,255,255,0.6)"}} onClick={()=>{ localStorage.removeItem("sv_user"); setCurrentUser(null); }}><Icon name="logout" size={20}/>Out</button>
