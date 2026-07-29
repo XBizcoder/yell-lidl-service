@@ -115,7 +115,7 @@ const Icon = ({ name, size = 16 }) => {
 const CSS = `
   @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
   *{box-sizing:border-box;margin:0;padding:0;}
-  :root{--bg:#f4f6f9;--bg2:#ffffff;--bg3:#edf0f5;--bg4:#dde2ec;--border:#d0d7e3;--border2:#b0bcd0;--accent:#0050AA;--accent2:#003d82;--green:#1a7f37;--red:#e60a14;--yellow:#f6c01a;--blue:#0050AA;--text:#0a1628;--text2:#3d5278;--text3:#7a8fad;--radius:6px;}
+  :root{--bg:#f4f6f9;--bg2:#ffffff;--bg3:#edf0f5;--bg4:#dde2ec;--border:#d0d7e3;--border2:#b0bcd0;--accent:#0050AA;--accent2:#003d82;--green:#1a7f37;--red:#e60a14;--yellow:#f6c01a;--blue:#0050AA;--text:#0a1628;--text2:#3d5278;--text3:#000000;--radius:6px;}
   html,body{max-width:100%;overflow-x:hidden;-webkit-text-size-adjust:100%;}
   input,select,textarea,button{-webkit-appearance:none;appearance:none;border-radius:var(--radius);}
   input[type="date"],input[type="datetime-local"]{-webkit-appearance:none;min-height:38px;}
