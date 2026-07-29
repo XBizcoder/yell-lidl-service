@@ -436,7 +436,8 @@ function JobForm({ job, branches, customers, users, currentUser, onSave, onClose
   });
   const [saving, setSaving] = useState(false);
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
-  const branch = branches.find(b => b.id === form.branchId);
+  branches.sort((a, b) => a.id - b.id);
+  const branch = branches.find(b => b.id === form.branchId);  
   const kmTravelled = branch ? branch.distanceKm * 2 : 0;
   const earnings = branch ? calcEarnings({ ...form, kmTravelled }, RATES) : null;
   const valid = form.branchId && form.departureTime && form.arrivalTime && form.hoursWorked && form.returnTime;
