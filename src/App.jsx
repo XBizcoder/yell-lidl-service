@@ -1239,7 +1239,6 @@ function JobsPage({ jobs, reload, branches, customers, users, currentUser, toast
             : <table>
                 <thead><tr>
                   <SH col="departureTime" label="Date"/>
-                  <th className="hide-mobile">Customer</th>
                   <th>Branch</th><th>City / Address</th>
                   {currentUser.role==="admin"&&<th>Technician</th>}
                   <SH col="hoursWorked" label="Hours"/>
@@ -1250,9 +1249,15 @@ function JobsPage({ jobs, reload, branches, customers, users, currentUser, toast
                   const b=branches.find(x=>x.id===j.branchId);
                   const u=users.find(x=>x.id===j.userId);
                   const e=calcEarnings(j,RATES);
+                  const cust=customers.find(c=>c.id===b?.customerId);
                   return <tr key={j.id}>
                     <td className="td-mono">{fmtDate(j.departureTime)}</td>
-                    <td className="td-mono">{j.branchId}</td>
+                    <td className="td-mono">
+                      <div style={{display:"flex",alignItems:"center",gap:6}}>
+                        {cust && <span title={cust.name} style={{width:20,height:20,borderRadius:"50%",background:cust.color,display:"inline-flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:11,fontWeight:700,fontFamily:"IBM Plex Mono,monospace",flexShrink:0}}>{cust.name[0]}</span>}
+                        {j.branchId}
+                      </div>
+                    </td>
                     <td>{b?.city??"—"}{b?.address ? <span style={{color:"var(--text3)",marginLeft:6}}>{b.address}</span> : ""}</td>
                     {currentUser.role==="admin"&&<td>{u?.name??"—"}</td>}
                     <td className="td-mono">{j.hoursWorked} h</td>
