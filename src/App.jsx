@@ -1149,7 +1149,7 @@ function BranchesPage({ branches, customers, reload, isAdmin, toast }) {
 }
 
 // ── JOBS PAGE ─────────────────────────────────────────────────────────────────
-function JobsPage({ jobs, reload, branches, users, currentUser, toast, prefilledJob, clearPrefill }) {
+function JobsPage({ jobs, reload, branches, customers, users, currentUser, toast, prefilledJob, clearPrefill }) {
   const [modal, setModal] = useState(null);
   const [detail, setDetail] = useState(null);
   const [editingJob, setEditingJob] = useState(null);
@@ -1159,6 +1159,7 @@ function JobsPage({ jobs, reload, branches, users, currentUser, toast, prefilled
     if (prefilledJob) { setModal("add"); }
   }, [prefilledJob]);
   const [search, setSearch] = useState("");
+  const [filterCustomer, setFilterCustomer] = useState("");
   const [filterBranch, setFilterBranch] = useState("");
   const [filterUser, setFilterUser] = useState("");
   const [filterCity, setFilterCity] = useState("");
@@ -1171,6 +1172,7 @@ function JobsPage({ jobs, reload, branches, users, currentUser, toast, prefilled
 
   const filtered = useMemo(()=>myJobs.filter(j=>{
     const b=branches.find(x=>x.id===j.branchId);
+    if(filterCustomer && b?.customerId!==filterCustomer) return false;
     if(search && !j.branchId.includes(search) && !b?.city.toLowerCase().includes(search.toLowerCase()) && !j.description?.toLowerCase().includes(search.toLowerCase())) return false;
     if(filterBranch && j.branchId!==filterBranch) return false;
     if(filterCity && b?.city!==filterCity) return false;
@@ -1179,7 +1181,7 @@ function JobsPage({ jobs, reload, branches, users, currentUser, toast, prefilled
     if(filterDateTo && new Date(j.departureTime)>new Date(filterDateTo+"T23:59:59")) return false;
     return true;
   }).sort((a,b)=>{ const av=a[sortCol],bv=b[sortCol]; return sortDir*(av<bv?-1:av>bv?1:0); }),
-  [myJobs,search,filterBranch,filterCity,filterUser,filterDateFrom,filterDateTo,sortCol,sortDir]);
+  [myJobs,search,filterCustomer,filterBranch,filterCity,filterUser,filterDateFrom,filterDateTo,sortCol,sortDir]);
 
   const sort = col => { if(sortCol===col) setSortDir(d=>-d); else{setSortCol(col);setSortDir(-1);} };
   const SH = ({col,label}) => <th style={{cursor:"pointer",userSelect:"none"}} onClick={()=>sort(col)}>{label} {sortCol===col?(sortDir===1?"↑":"↓"):""}</th>;
