@@ -436,8 +436,7 @@ function JobForm({ job, branches, customers, users, currentUser, onSave, onClose
   });
   const [saving, setSaving] = useState(false);
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
-  branches.sort((a, b) => a.id - b.id);
-  const branch = branches.find(b => b.id === form.branchId);  
+  const branch = branches.find(b => b.id === form.branchId);
   const kmTravelled = branch ? branch.distanceKm * 2 : 0;
   const earnings = branch ? calcEarnings({ ...form, kmTravelled }, RATES) : null;
   const valid = form.branchId && form.departureTime && form.arrivalTime && form.hoursWorked && form.returnTime;
@@ -456,7 +455,7 @@ function JobForm({ job, branches, customers, users, currentUser, onSave, onClose
           <div className="field"><label>Branch</label>
             <select value={form.branchId} onChange={e=>set("branchId",e.target.value)}>
               <option value="">— Select branch —</option>
-              {branches.map(b=>{const c=customers?.find(x=>x.id===b.customerId); return <option key={b.id} value={b.id}>{c?`[${c.name}] `:""}{b.id} {b.city} — {b.address}</option>;})}
+              {[...branches].sort((a,b)=>a.id.localeCompare(b.id)).map(b=>{const c=customers?.find(x=>x.id===b.customerId); return <option key={b.id} value={b.id}>{c?`[${c.name}] `:""}{b.id} {b.city} — {b.address}</option>;})}
             </select>
           </div>
           <div className="field"><label>Technician</label>
@@ -831,7 +830,7 @@ function TaskForm({ task, branches, customers, users, currentUser, onSave, onClo
           <div className="field"><label>Branch</label>
             <select value={form.branchId} onChange={e=>set("branchId",e.target.value)}>
               <option value="">— Select branch —</option>
-              {branches.map(b=>{const c=customers?.find(x=>x.id===b.customerId); return <option key={b.id} value={b.id}>{c?`[${c.name}] `:""}{b.id} {b.city} — {b.address}</option>;})}
+              {[...branches].sort((a,b)=>a.id.localeCompare(b.id)).map(b=>{const c=customers?.find(x=>x.id===b.customerId); return <option key={b.id} value={b.id}>{c?`[${c.name}] `:""}{b.id} {b.city} — {b.address}</option>;})}
             </select>
           </div>
           <div className="field"><label>Assigned to</label>
@@ -1220,7 +1219,7 @@ function JobsPage({ jobs, reload, branches, customers, users, currentUser, toast
           </select>
           <select className="filter-select" value={filterBranch} onChange={e=>setFilterBranch(e.target.value)}>
             <option value="">All branches</option>
-            {(filterCustomer ? branches.filter(b=>b.customerId===filterCustomer) : branches).map(b=><option key={b.id} value={b.id}>[{b.id}] {b.city}</option>)}
+            {[...(filterCustomer ? branches.filter(b=>b.customerId===filterCustomer) : branches)].sort((a,b)=>a.id.localeCompare(b.id)).map(b=><option key={b.id} value={b.id}>[{b.id}] {b.city}</option>)}
           </select>
           <select className="filter-select" value={filterCity} onChange={e=>setFilterCity(e.target.value)}>
             <option value="">All cities</option>
@@ -1282,7 +1281,7 @@ function JobsPage({ jobs, reload, branches, customers, users, currentUser, toast
 }
 
 // ── EXPORT HELPERS ────────────────────────────────────────────────────────────
-function buildRows(jobs, branches, users) {
+function buildRows(jobs, branches, users, customers) {
   return jobs.map(j => {
     const b = branches.find(x => x.id === j.branchId);
     const u = users.find(x => x.id === j.userId);
@@ -1397,7 +1396,7 @@ function EarningsPage({ jobs, branches, customers, users, currentUser }) {
     if (!filtered.length) return;
     setExporting(true);
     try {
-      const rows = buildRows(filtered, branches, users);
+      const rows = buildRows(filtered, branches, users, customers);
       if (fmt === "csv") exportCSV(rows, getFilename("csv"));
       else await exportXLSX(rows, getFilename("xlsx"));
     } catch(e) { alert("Export error: "+e.message); }
